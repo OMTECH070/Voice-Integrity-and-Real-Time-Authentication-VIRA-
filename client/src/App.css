@@ -1,0 +1,170 @@
+.page-container {
+  max-width: 480px;
+  margin: 60px auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+h1 {
+  margin: 0 0 4px;
+}
+
+.tagline {
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.register-form {
+  display: flex;
+  gap: 8px;
+}
+
+.register-form input {
+  flex: 1;
+  padding: 10px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.register-form button,
+.user-list-item button,
+.modal-actions button,
+.call-controls button {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.user-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.user-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.user-status {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-available {
+  background: #22c55e;
+}
+
+.status-in-call {
+  background: #f59e0b;
+}
+
+.empty-state {
+  color: #999;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 280px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.btn-accept {
+  background: #22c55e !important;
+}
+
+.btn-reject {
+  background: #ef4444 !important;
+}
+
+.btn-end {
+  background: #ef4444 !important;
+}
+
+.active-call-screen {
+  padding: 20px 0;
+}
+
+.call-status {
+  color: #666;
+}
+
+.call-timer {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 12px 0;
+}
+
+.call-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.error-banner {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-banner button {
+  background: none !important;
+  color: #991b1b;
+  font-size: 18px;
+  padding: 0 4px;
+}
