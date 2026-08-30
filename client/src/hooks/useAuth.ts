@@ -96,10 +96,29 @@ export function useAuth(): UseAuthResult {
         password,
         options: { data: { full_name: displayName } },
       });
+
       if (signUpError) {
         setError(signUpError.message);
         return false;
       }
+
+      // Supabase deliberately returns a look-alike success response when
+      // the email is already registered (anti-enumeration protection):
+      // no error, but `identities` comes back empty and no session is
+      // issued. A genuine brand-new signup pending email confirmation
+      // ALSO has no session yet. We show the exact same neutral message
+      // for both cases below — the UI must not distinguish "already
+      // registered" from "check your email to confirm" or it defeats
+      // the protection. We also must not call loadProfile() here: the
+      // fake response's user.id doesn't correspond to any real profile
+      // row, and would otherwise surface a raw database error.
+      if (!data.session) {
+        setError(
+          "Check your email to finish setting up your account, or log in if you already have one."
+        );
+        return false;
+      }
+
       if (data.user) await loadProfile(data.user.id);
       return true;
     },
