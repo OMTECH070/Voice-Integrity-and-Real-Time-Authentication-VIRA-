@@ -28,14 +28,14 @@ function broadcastUserList(io: TypedServer): void {
 }
 
 export function registerPresenceHandlers(io: TypedServer, socket: TypedSocket): void {
-  socket.on("presence:register", ({ username }) => {
-    const trimmed = username.trim();
-    if (trimmed.length === 0) {
-      logger.warn(`Rejected empty username registration from ${socket.id}`);
+  socket.on("presence:register", ({ accountId, username }) => {
+    const trimmedUsername = username.trim();
+    if (!accountId || trimmedUsername.length === 0) {
+      logger.warn(`Rejected invalid registration from ${socket.id}`);
       return;
     }
 
-    const user = presenceService.register(socket.id, trimmed);
+    const user = presenceService.register(accountId, socket.id, trimmedUsername);
     socket.data.userId = user.id;
 
     logger.info(`User registered: ${user.username} (${user.id})`);

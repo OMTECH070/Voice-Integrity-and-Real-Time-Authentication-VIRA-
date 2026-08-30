@@ -18,7 +18,14 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
 
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
+app.use(express.json());
 app.get("/health", healthCheck);
+
+// NOTE: auth, profile, and contacts are now handled directly by the
+// client talking to Supabase (see client/src/services/supabaseClient.ts),
+// protected by the RLS policies in supabase/schema.sql — no custom
+// Express API needed for those anymore. This server is purely
+// Socket.IO call signaling.
 
 const httpServer = createServer(app);
 

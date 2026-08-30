@@ -20,7 +20,10 @@ export interface IceCandidatePayload {
 
 /** Events the CLIENT emits, received by the SERVER. */
 export interface ClientToServerEvents {
-  "presence:register": (payload: { username: string }) => void;
+  /** username here carries the account's display name — actual identity
+   * targeting uses accountId (the real Supabase account id), never this
+   * field. See presence.service.ts for why. */
+  "presence:register": (payload: { accountId: string; username: string }) => void;
 
   "call:request": (payload: { toUserId: UserId }) => void;
   "call:accept": (payload: { callId: CallId }) => void;

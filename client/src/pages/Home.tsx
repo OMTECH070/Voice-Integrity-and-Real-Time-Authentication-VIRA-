@@ -1,11 +1,18 @@
-import { FormEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCallManager } from "../hooks/useCallManager";
+import { UseAuthResult } from "../hooks/useAuth";
 import { UserList } from "../components/UserList";
 import { IncomingCallModal } from "../components/IncomingCallModal";
 import { ActiveCallScreen } from "../components/ActiveCallScreen";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { ProfileEditor } from "./ProfileEditor";
+import { ContactsPanel } from "./ContactsPanel";
 
-export function Home() {
+interface HomeProps {
+  auth: UseAuthResult;
+}
+
+export function Home({ auth }: HomeProps) {
   const {
     self,
     users,
@@ -23,30 +30,24 @@ export function Home() {
     dismissError,
   } = useCallManager();
 
-  const [usernameInput, setUsernameInput] = useState("");
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
 
-  function handleRegister(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = usernameInput.trim();
-    if (trimmed.length === 0) return;
-    register(trimmed);
-  }
+  // Register presence using the REAL authenticated account, not a
+  // typed-in name — this is what makes the calling system target
+  // people by their actual persistent identity.
+  useEffect(() => {
+    if (auth.user) {
+      register(auth.user.id, auth.user.displayName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.user?.id]);
 
   if (!self) {
     return (
       <div className="page-container">
         <h1>VIRA</h1>
-        <p className="tagline">1-to-1 voice calling</p>
-        <form onSubmit={handleRegister} className="register-form">
-          <input
-            type="text"
-            placeholder="Enter your username"
-            value={usernameInput}
-            onChange={(e) => setUsernameInput(e.target.value)}
-            autoFocus
-          />
-          <button type="submit">Join</button>
-        </form>
+        <p className="tagline">Connecting...</p>
       </div>
     );
   }
@@ -57,20 +58,28 @@ export function Home() {
 
   return (
     <div className="page-container">
-      <h1>VIRA</h1>
-      <p className="tagline">
-        Signed in as <strong>{self.username}</strong>
-      </p>
+      <div className="home-header">
+        <div>
+          <h1>VIRA</h1>
+          <p className="tagline">
+            Signed in as <strong>{auth.user?.displayName}</strong> (@{auth.user?.username})
+          </p>
+        </div>
+        <div className="home-header-actions">
+          <button onClick={() => setShowProfileEditor(true)}>Edit Profile</button>
+          <button onClick={() => setShowContacts((v) => !v)}>
+            {showContacts ? "Hide Contacts" : "Contacts"}
+          </button>
+          <button onClick={auth.signOut}>Log Out</button>
+        </div>
+      </div>
 
       {error && <ErrorBanner error={error} onDismiss={dismissError} />}
 
+      {showContacts && auth.user && <ContactsPanel ownUserId={auth.user.id} />}
+
       {isIdle && (
-        <UserList
-          users={users}
-          selfId={self.id}
-          onCall={callUser}
-          disabled={!isIdle}
-        />
+        <UserList users={users} selfId={self.id} onCall={callUser} disabled={!isIdle} />
       )}
 
       {isRinging && activeCall && (
@@ -89,6 +98,14 @@ export function Home() {
           isMuted={isMuted}
           onToggleMute={toggleMute}
           onEndCall={endCall}
+        />
+      )}
+
+      {showProfileEditor && auth.user && (
+        <ProfileEditor
+          user={auth.user}
+          onUpdated={() => auth.refreshProfile()}
+          onClose={() => setShowProfileEditor(false)}
         />
       )}
     </div>

@@ -255,3 +255,41 @@ anti-spoofing, transcription. The codebase is structured so an audio
 processing layer could be inserted between microphone capture and the
 peer connection later, but nothing from that future direction is
 implemented yet.
+
+## 10. Supabase Setup (Auth + Database)
+
+VIRA uses Supabase for authentication (email/password + Google OAuth) and
+as its Postgres database (profiles, contacts). It replaced an earlier
+custom JWT/bcrypt implementation once real persistence was needed.
+
+**Setup:**
+1. Create a free project at supabase.com
+2. Run `supabase/schema.sql` once in the Supabase SQL Editor (creates
+   `profiles`, `contacts`, RLS policies, and an auto-profile-creation trigger)
+3. Enable Google as an auth provider under **Authentication → Providers**
+   (requires a Google Cloud OAuth Client ID/Secret)
+4. Copy your Project URL and `anon public` key from **Project Settings → API**
+5. Set them in `client/.env`:
+   ```
+   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   ```
+
+**Architecture note:** the client (`client/src/services/supabaseClient.ts`)
+talks to Supabase directly for auth, profile reads/writes, and contacts —
+protected entirely by the Row Level Security policies in `schema.sql`, not
+by any custom Express endpoint. The Node/Express/Socket.IO server is used
+purely for call signaling and does not currently touch Supabase at all.
+
+**Known/unknown callers:** whether a caller is "known" is a pure
+set-membership check — does the caller's unique account `id` exist in the
+callee's `contacts` table? Never a comparison of username, display name,
+bio, or photo. Those fields are freely editable and therefore meaningless
+as a security signal; the unique id is not.
+
+**Username:** set once, right after first login (a required step for
+Google sign-ins specifically, since Google doesn't provide one). Enforced
+unique at the database level (`profiles.username` has a `unique`
+constraint). It is NOT the security mechanism for known/unknown — see
+above — it exists purely so people have a human-friendly, unspoofable
+handle to share instead of a raw UUID.

@@ -22,7 +22,7 @@ export interface UseCallManagerResult {
   error: CallError | null;
   remoteStream: MediaStream | null;
   isMuted: boolean;
-  register: (username: string) => void;
+  register: (accountId: string, username: string) => void;
   callUser: (toUserId: string) => void;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -174,8 +174,8 @@ export function useCallManager(): UseCallManagerResult {
   // ---------- Public actions ----------
 
   const register = useCallback(
-    (username: string) => {
-      socket.emit("presence:register", { username });
+    (accountId: string, username: string) => {
+      socket.emit("presence:register", { accountId, username });
     },
     [socket]
   );
