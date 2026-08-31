@@ -8,6 +8,7 @@ import {
 import { toUserDTO } from "../types/user";
 import { presenceService } from "../services/presence.service";
 import { callService } from "../services/call.service";
+import { getRelationship } from "../services/contacts.service";
 import { broadcastUserList } from "./presence.socket";
 import { logger } from "../utils/logger";
 
@@ -25,7 +26,7 @@ type TypedSocket = Socket<
 >;
 
 export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void {
-  socket.on("call:request", ({ toUserId }) => {
+  socket.on("call:request", async ({ toUserId }) => {
     const callerId = socket.data.userId;
     if (!callerId) return;
 
@@ -74,13 +75,20 @@ export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void
 
     const session = callService.createSession(callerId, toUserId);
 
+    // Known/unknown is checked FROM THE CALLEE'S perspective: does the
+    // caller's account id exist in the callee's contacts? This is why
+    // it's awaited here before emitting call:incoming — the badge must
+    // be present the moment the notification appears, not added after.
+    const relationship = await getRelationship(toUserId, callerId);
+
     logger.info(
-      `Call requested: ${caller.username} -> ${callee.username} (${session.callId})`
+      `Call requested: ${caller.username} -> ${callee.username} (${session.callId}, caller is ${relationship} to callee)`
     );
 
     io.to(callee.socketId).emit("call:incoming", {
       callId: session.callId,
       from: toUserDTO(caller),
+      relationship,
     });
     socket.emit("call:ringing", {
       callId: session.callId,

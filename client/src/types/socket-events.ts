@@ -1,5 +1,6 @@
 import { CallError, CallId } from "./call";
 import { UserDTO, UserId } from "./user";
+import { CallerRelationship } from "./contacts";
 
 export interface SessionDescriptionPayload {
   type: "offer" | "answer";
@@ -40,7 +41,11 @@ export interface ServerToClientEvents {
   "presence:users": (payload: { users: UserDTO[] }) => void;
   "presence:self": (payload: { self: UserDTO }) => void;
 
-  "call:incoming": (payload: { callId: CallId; from: UserDTO }) => void;
+  "call:incoming": (payload: {
+    callId: CallId;
+    from: UserDTO;
+    relationship: CallerRelationship;
+  }) => void;
   "call:ringing": (payload: { callId: CallId; to: UserDTO }) => void;
   "call:accepted": (payload: { callId: CallId; by: UserDTO }) => void;
   "call:rejected": (payload: { callId: CallId; by: UserDTO }) => void;

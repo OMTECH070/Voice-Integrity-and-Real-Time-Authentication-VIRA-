@@ -282,3 +282,33 @@ button:disabled {
   color: #333;
   border: 1px solid #ccc;
 }
+
+.known-caller-badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.unknown-caller-badge {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.unknown-caller-note {
+  font-size: 13px;
+  color: #92400e;
+  background: #fffbeb;
+  padding: 8px;
+  border-radius: 6px;
+}

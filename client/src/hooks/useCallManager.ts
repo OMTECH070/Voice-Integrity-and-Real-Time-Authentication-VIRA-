@@ -65,8 +65,8 @@ export function useCallManager(): UseCallManagerResult {
     socket.on("presence:self", ({ self: selfDto }) => setSelf(selfDto));
     socket.on("presence:users", ({ users: list }) => setUsers(list));
 
-    socket.on("call:incoming", ({ callId, from }) => {
-      setActiveCall({ callId, remoteUser: from, isCaller: false });
+    socket.on("call:incoming", ({ callId, from, relationship }) => {
+      setActiveCall({ callId, remoteUser: from, isCaller: false, relationship });
       setCallState("RINGING");
     });
 
