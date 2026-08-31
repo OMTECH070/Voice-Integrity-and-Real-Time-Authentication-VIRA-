@@ -1,4 +1,5 @@
 import { UserDTO, UserId } from "./user";
+import { CallerRelationship } from "./contacts";
 
 export type CallId = string;
 
@@ -33,6 +34,9 @@ export interface ActiveCallInfo {
   remoteUser: UserDTO;
   /** Was this client the one who placed the call? */
   isCaller: boolean;
+  /** Only meaningful on the callee side (isCaller: false) — undefined
+   * for the caller, since a caller isn't shown a badge about themselves. */
+  relationship?: CallerRelationship;
 }
 
 export type CallErrorCode =

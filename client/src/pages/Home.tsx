@@ -85,6 +85,7 @@ export function Home({ auth }: HomeProps) {
       {isRinging && activeCall && (
         <IncomingCallModal
           caller={activeCall.remoteUser}
+          relationship={activeCall.relationship}
           onAccept={acceptCall}
           onReject={rejectCall}
         />
