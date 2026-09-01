@@ -7,6 +7,7 @@ import { ActiveCallScreen } from "../components/ActiveCallScreen";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { ProfileEditor } from "./ProfileEditor";
 import { ContactsPanel } from "./ContactsPanel";
+import { EnrollVoice } from "./EnrollVoice";
 
 interface HomeProps {
   auth: UseAuthResult;
@@ -32,6 +33,7 @@ export function Home({ auth }: HomeProps) {
 
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
+  const [showEnrollVoice, setShowEnrollVoice] = useState(false);
 
   // Register presence using the REAL authenticated account, not a
   // typed-in name — this is what makes the calling system target
@@ -67,6 +69,7 @@ export function Home({ auth }: HomeProps) {
         </div>
         <div className="home-header-actions">
           <button onClick={() => setShowProfileEditor(true)}>Edit Profile</button>
+          <button onClick={() => setShowEnrollVoice(true)}>Enroll Voice</button>
           <button onClick={() => setShowContacts((v) => !v)}>
             {showContacts ? "Hide Contacts" : "Contacts"}
           </button>
@@ -109,6 +112,8 @@ export function Home({ auth }: HomeProps) {
           onClose={() => setShowProfileEditor(false)}
         />
       )}
+
+      {showEnrollVoice && <EnrollVoice onClose={() => setShowEnrollVoice(false)} />}
     </div>
   );
 }

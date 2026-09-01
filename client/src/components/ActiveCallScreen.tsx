@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { ActiveCallInfo, CallState } from "../types/call";
 import { formatDuration, useCallTimer } from "../hooks/useCallTimer";
+import { useVoiceVerification } from "../hooks/useVoiceVerification";
 
 interface ActiveCallScreenProps {
   activeCall: ActiveCallInfo;
@@ -22,6 +23,15 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
+const VERIFICATION_LABELS: Record<string, string> = {
+  listening: "Checking voice...",
+  checking: "Checking voice...",
+  verified: "✓ Voice Verified",
+  mismatch: "⚠️ Voice Does Not Match Account",
+  not_enrolled: "Caller has not enrolled their voice",
+  unavailable: "Voice check unavailable",
+};
+
 export function ActiveCallScreen({
   activeCall,
   callState,
@@ -32,6 +42,15 @@ export function ActiveCallScreen({
 }: ActiveCallScreenProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duration = useCallTimer(callState === "CONNECTED");
+
+  // Only the callee verifies — never the caller, and never self-reported.
+  // See hooks/useVoiceVerification.ts for why.
+  const { status: verificationStatus } = useVoiceVerification(
+    remoteStream,
+    callState === "CONNECTED",
+    !activeCall.isCaller,
+    activeCall.remoteUser.id
+  );
 
   useEffect(() => {
     if (audioRef.current && remoteStream) {
@@ -45,6 +64,9 @@ export function ActiveCallScreen({
     callState === "CONNECTING" ||
     callState === "CONNECTED";
 
+  const verificationLabel = VERIFICATION_LABELS[verificationStatus];
+  const isMismatch = verificationStatus === "mismatch";
+
   return (
     <div className="active-call-screen">
       <h2>{activeCall.remoteUser.username}</h2>
@@ -52,6 +74,12 @@ export function ActiveCallScreen({
 
       {callState === "CONNECTED" && (
         <p className="call-timer">{formatDuration(duration)}</p>
+      )}
+
+      {!activeCall.isCaller && callState === "CONNECTED" && verificationLabel && (
+        <p className={isMismatch ? "voice-mismatch-badge" : "voice-status-badge"}>
+          {verificationLabel}
+        </p>
       )}
 
       <audio ref={audioRef} autoPlay playsInline />

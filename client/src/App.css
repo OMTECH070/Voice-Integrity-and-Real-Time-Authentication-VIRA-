@@ -312,3 +312,24 @@ button:disabled {
   padding: 8px;
   border-radius: 6px;
 }
+
+.voice-status-badge {
+  font-size: 13px;
+  color: #166534;
+  background: #dcfce7;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+.voice-mismatch-badge {
+  font-size: 13px;
+  color: #991b1b;
+  background: #fee2e2;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 8px;
+  font-weight: 600;
+}
