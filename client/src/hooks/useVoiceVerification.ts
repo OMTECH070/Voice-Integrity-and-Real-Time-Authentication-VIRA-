@@ -10,7 +10,7 @@ export type VoiceVerificationStatus =
   | "not_enrolled"
   | "unavailable";
 
-const CAPTURE_SECONDS = 4;
+const CAPTURE_SECONDS = 6;
 
 /**
  * Runs ONLY on the callee's side (shouldVerify should be `!isCaller`).

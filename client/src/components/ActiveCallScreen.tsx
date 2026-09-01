@@ -45,7 +45,7 @@ export function ActiveCallScreen({
 
   // Only the callee verifies — never the caller, and never self-reported.
   // See hooks/useVoiceVerification.ts for why.
-  const { status: verificationStatus } = useVoiceVerification(
+  const { status: verificationStatus, score: verificationScore } = useVoiceVerification(
     remoteStream,
     callState === "CONNECTED",
     !activeCall.isCaller,
@@ -79,6 +79,7 @@ export function ActiveCallScreen({
       {!activeCall.isCaller && callState === "CONNECTED" && verificationLabel && (
         <p className={isMismatch ? "voice-mismatch-badge" : "voice-status-badge"}>
           {verificationLabel}
+          {verificationScore !== null && ` (score: ${verificationScore.toFixed(3)})`}
         </p>
       )}
 

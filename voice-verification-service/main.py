@@ -41,7 +41,7 @@ app.add_middleware(
 
 MATCH_THRESHOLD = 0.55
 MIN_ENROLLMENT_SPEECH_SECONDS = 1.5
-MIN_VERIFY_SPEECH_SECONDS = 0.5
+MIN_VERIFY_SPEECH_SECONDS = 2.0
 
 os.makedirs("/tmp/vira_audio", exist_ok=True)
 
@@ -147,6 +147,8 @@ async def verify(
         convert_to_wav(raw_path, wav_path)
         audio, sr = sf.read(wav_path)
         speech_only = extract_speech_only(np.asarray(audio, dtype=np.float32), sr)
+        speech_seconds = len(speech_only) / sr
+        print(f"[/verify] Detected {speech_seconds:.2f}s of speech in the submitted clip.")
 
         if len(speech_only) < sr * MIN_VERIFY_SPEECH_SECONDS:
             return {"match": False, "score": 0.0, "reason": "insufficient_audio"}

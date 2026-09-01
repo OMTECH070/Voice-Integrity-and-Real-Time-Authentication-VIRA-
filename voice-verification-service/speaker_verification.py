@@ -10,6 +10,18 @@ Responsible for:
 import os
 import numpy as np
 import torch
+import torchaudio
+
+# --- Compatibility patch: torchaudio removed list_audio_backends() in
+# version 2.9 (Oct 2025); audio backend handling moved to torchcodec.
+# speechbrain (as of 1.0.x) still calls this function directly during
+# its own internal setup, which crashes with:
+#   AttributeError: module 'torchaudio' has no attribute 'list_audio_backends'
+# This adds a harmless stand-in so that check doesn't crash, regardless
+# of which torchaudio version ends up installed — pip resolution can
+# drift over time even with pinned requirements, across platforms.
+if not hasattr(torchaudio, "list_audio_backends"):
+    torchaudio.list_audio_backends = lambda: ["soundfile"]
 
 _classifier = None
 MODEL_SOURCE = "speechbrain/spkrec-ecapa-voxceleb"

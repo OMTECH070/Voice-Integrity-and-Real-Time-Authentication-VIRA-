@@ -4,3 +4,29 @@ dist/
 .env.local
 *.log
 .DS_Store
+
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

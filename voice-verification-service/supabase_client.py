@@ -16,7 +16,16 @@ Supabase from this service, matching two different trust levels:
 import os
 import subprocess
 
+from dotenv import load_dotenv
 from supabase import create_client, Client
+
+# Loads variables from a .env file in this folder, if one exists.
+# On Hugging Face Spaces (or any real deployment), you won't have a
+# .env file — you'll set these as actual environment variables /
+# repository secrets instead, and load_dotenv() simply does nothing in
+# that case (no .env file to find), which is exactly the behavior you
+# want: same code works both ways.
+load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
