@@ -32,6 +32,78 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
+/**
+ * Routes call audio output between loudspeaker and normal default/earpiece output.
+ * Remote audio is NEVER muted by the speaker toggle.
+ */
+async function routeAudioOutput(
+  audioEl: HTMLAudioElement | null,
+  isSpeakerOn: boolean
+): Promise<void> {
+  if (!audioEl) return;
+
+  // Remote caller audio MUST remain audible in both states
+  audioEl.muted = false;
+
+  if (!("setSinkId" in audioEl) || typeof audioEl.setSinkId !== "function") {
+    // Browser does not expose setSinkId; remote audio continues through default output
+    return;
+  }
+
+  try {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      await audioEl.setSinkId("");
+      return;
+    }
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioOutputs = devices.filter((d) => d.kind === "audiooutput");
+
+    if (audioOutputs.length === 0) {
+      await audioEl.setSinkId("");
+      return;
+    }
+
+    if (isSpeakerOn) {
+      // Speaker On: Route to loudspeaker if exposed, or default output
+      const speakerDevice = audioOutputs.find((d) => {
+        const label = d.label.toLowerCase();
+        return (
+          (label.includes("speaker") || label.includes("loudspeaker")) &&
+          !label.includes("earpiece") &&
+          !label.includes("handset") &&
+          !label.includes("headphone") &&
+          !label.includes("headset")
+        );
+      });
+
+      const targetId = speakerDevice
+        ? speakerDevice.deviceId
+        : (audioOutputs.find((d) => d.deviceId === "default")?.deviceId || "");
+      await audioEl.setSinkId(targetId);
+    } else {
+      // Speaker Off: Route to earpiece / handset / communications receiver / default output
+      const earpieceDevice = audioOutputs.find((d) => {
+        const label = d.label.toLowerCase();
+        return (
+          label.includes("earpiece") ||
+          label.includes("handset") ||
+          label.includes("receiver") ||
+          label.includes("phone") ||
+          label.includes("headphone") ||
+          label.includes("headset") ||
+          label.includes("communications")
+        );
+      });
+
+      const targetId = earpieceDevice ? earpieceDevice.deviceId : "";
+      await audioEl.setSinkId(targetId);
+    }
+  } catch (err) {
+    console.warn("[VIRA][AUDIO] setSinkId routing fallback:", err);
+  }
+}
+
 export function ActiveCallScreen({
   activeCall,
   callState,
@@ -64,26 +136,26 @@ export function ActiveCallScreen({
     onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
   });
 
-  // Synchronize remote audio element playback and speaker mute IDL property
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = !speakerEnabled;
-    }
-  }, [speakerEnabled]);
-
+  // Ensure remote audio playback is attached and audible
   useEffect(() => {
     if (audioRef.current && remoteStream) {
       audioRef.current.srcObject = remoteStream;
-      audioRef.current.muted = !speakerEnabled;
+      audioRef.current.muted = false;
+      void routeAudioOutput(audioRef.current, speakerEnabled);
     }
-  }, [remoteStream, speakerEnabled]);
+  }, [remoteStream]);
+
+  // Handle speaker output route switching without ever muting
+  useEffect(() => {
+    if (audioRef.current) {
+      void routeAudioOutput(audioRef.current, speakerEnabled);
+    }
+  }, [speakerEnabled]);
 
   const toggleSpeaker = () => {
     setSpeakerEnabled((prev) => {
       const next = !prev;
-      if (audioRef.current) {
-        audioRef.current.muted = !next;
-      }
+      void routeAudioOutput(audioRef.current, next);
       return next;
     });
   };
@@ -107,7 +179,7 @@ export function ActiveCallScreen({
   if (isEasyMode) {
     return (
       <div className="active-call-canvas easy-mode-active" role="main" aria-label="Secure Easy Mode Call">
-        <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+        <audio ref={audioRef} autoPlay playsInline />
         <EasyModeCallScreen
           activeCall={activeCall}
           callState={callState}
@@ -196,7 +268,7 @@ export function ActiveCallScreen({
       </div>
 
       {/* Audio Element */}
-      <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+      <audio ref={audioRef} autoPlay playsInline />
 
       {/* Voice Integrity Section */}
       {callState === "CONNECTED" && (
@@ -242,9 +314,9 @@ export function ActiveCallScreen({
             </button>
 
             <button
-              className={`btn-call-action-minimal btn-call-mute ${!speakerEnabled ? "muted" : ""}`}
+              className="btn-call-action-minimal btn-call-mute"
               onClick={toggleSpeaker}
-              aria-label={speakerEnabled ? "Mute speaker" : "Unmute speaker"}
+              aria-label={speakerEnabled ? "Speaker On" : "Speaker Off"}
             >
               {speakerEnabled ? "Speaker On" : "Speaker Off"}
             </button>
