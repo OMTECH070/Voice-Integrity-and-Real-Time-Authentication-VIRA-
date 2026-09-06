@@ -8,6 +8,7 @@ import { SecurityIndicator, SecurityState } from "./SecurityIndicator";
 import { useEasyMode } from "../context/EasyModeContext";
 import { EasyModeCallScreen } from "./EasyModeCallScreen";
 import type { SpeechSegment } from "../audio/vad/types";
+import { setNativeSpeakerEnabled, resetNativeAudioMode } from "../services/nativeAudioRouting";
 
 interface ActiveCallScreenProps {
   activeCall: ActiveCallInfo;
@@ -32,80 +33,7 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
-/**
- * Routes call audio output between loudspeaker and normal default/earpiece output.
- * Remote audio is NEVER muted by the speaker toggle.
- */
-async function routeAudioOutput(
-  audioEl: HTMLAudioElement | null,
-  isSpeakerOn: boolean
-): Promise<void> {
-  if (!audioEl) return;
 
-  // Remote caller audio MUST remain audible in both states
-  audioEl.muted = false;
-
-  if (!("setSinkId" in audioEl) || typeof audioEl.setSinkId !== "function") {
-    // Browser does not expose setSinkId; remote audio continues through default output
-    return;
-  }
-
-  try {
-    if (!navigator.mediaDevices?.enumerateDevices) {
-      await audioEl.setSinkId("");
-      return;
-    }
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioOutputs = devices.filter((d) => d.kind === "audiooutput");
-
-    if (audioOutputs.length === 0) {
-      await audioEl.setSinkId("");
-      return;
-    }
-
-    if (isSpeakerOn) {
-      // Speaker On: Route to loudspeaker if exposed, or default output
-      const speakerDevice = audioOutputs.find((d) => {
-        const label = d.label.toLowerCase();
-        return (
-          (label.includes("speaker") || label.includes("loudspeaker")) &&
-          !label.includes("earpiece") &&
-          !label.includes("handset") &&
-          !label.includes("headphone") &&
-          !label.includes("headset")
-        );
-      });
-
-      const targetId = speakerDevice
-        ? speakerDevice.deviceId
-        : (audioOutputs.find((d) => d.deviceId === "default")?.deviceId || "");
-      console.log(`[VIRA][AUDIO] Speaker route -> Loudspeaker: "${speakerDevice?.label || "default"}" (id: ${targetId || "default"})`);
-      await audioEl.setSinkId(targetId);
-    } else {
-      // Speaker Off: Route to earpiece / handset / communications receiver / default output
-      const earpieceDevice = audioOutputs.find((d) => {
-        const label = d.label.toLowerCase();
-        return (
-          label.includes("earpiece") ||
-          label.includes("handset") ||
-          label.includes("receiver") ||
-          label.includes("phone") ||
-          label.includes("headphone") ||
-          label.includes("headset") ||
-          label.includes("communications")
-        );
-      });
-
-      const targetId = earpieceDevice ? earpieceDevice.deviceId : "";
-      console.log(`[VIRA][AUDIO] Speaker route -> Earpiece / Default Receiver: "${earpieceDevice?.label || "default"}" (id: ${targetId || "default"})`);
-      await audioEl.setSinkId(targetId);
-    }
-  } catch (err) {
-    console.warn("[VIRA][AUDIO] setSinkId routing fallback (audio remains audible):", err);
-    audioEl.muted = false;
-  }
-}
 
 export function ActiveCallScreen({
   activeCall,
@@ -139,6 +67,16 @@ export function ActiveCallScreen({
     onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
   });
 
+  // Manage audio routing lifecycle: enter communication mode on connect, reset on end/unmount
+  useEffect(() => {
+    if (callState === "CONNECTED") {
+      void setNativeSpeakerEnabled(speakerEnabled, audioRef.current);
+    }
+    return () => {
+      void resetNativeAudioMode();
+    };
+  }, [callState]);
+
   // Ensure remote audio playback is attached and audible
   useEffect(() => {
     if (audioRef.current && remoteStream) {
@@ -147,21 +85,14 @@ export function ActiveCallScreen({
       audioRef.current.play().catch((err) => {
         console.warn("[VIRA][AUDIO] Remote audio autoplay error:", err);
       });
-      void routeAudioOutput(audioRef.current, speakerEnabled);
+      void setNativeSpeakerEnabled(speakerEnabled, audioRef.current);
     }
   }, [remoteStream]);
-
-  // Handle speaker output route switching without ever muting
-  useEffect(() => {
-    if (audioRef.current) {
-      void routeAudioOutput(audioRef.current, speakerEnabled);
-    }
-  }, [speakerEnabled]);
 
   const toggleSpeaker = () => {
     setSpeakerEnabled((prev) => {
       const next = !prev;
-      void routeAudioOutput(audioRef.current, next);
+      void setNativeSpeakerEnabled(next, audioRef.current);
       return next;
     });
   };
@@ -332,7 +263,10 @@ export function ActiveCallScreen({
         {canEndOrCancel && (
           <button
             className="btn-call-action-minimal btn-call-end"
-            onClick={onEndCall}
+            onClick={() => {
+              void resetNativeAudioMode();
+              onEndCall();
+            }}
             aria-label="End call"
           >
             End Call

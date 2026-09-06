@@ -178,4 +178,42 @@ test("Step 10 UI Test Suite: Voice Integrity Probabilistic Copy & States", async
     assert.equal(isCallEnded, true, "Call ended successfully");
     assert.equal(localTrackEnabled, false, "Local tracks stopped on call end");
   });
+
+  await t.test("ViraAudioRouting: Native Bridge & Web Fallback Lifecycle", async () => {
+    const { setNativeSpeakerEnabled, resetNativeAudioMode, applyWebAudioRouteFallback, isNativeAndroidAudioAvailable } = await import("../../services/nativeAudioRouting");
+
+    // In node test environment, native Android is false
+    assert.equal(isNativeAndroidAudioAvailable(), false, "Web environment correctly identified");
+
+    // 1. Speaker On fallback
+    const resOn = await setNativeSpeakerEnabled(true, null);
+    assert.equal(resOn.success, true);
+    assert.equal(resOn.route, "speaker");
+
+    // 2. Speaker Off fallback
+    const resOff = await setNativeSpeakerEnabled(false, null);
+    assert.equal(resOff.success, true);
+    assert.equal(resOff.route, "earpiece");
+
+    // 3. Repeated toggles do not throw or produce errors
+    for (let i = 0; i < 5; i++) {
+      const toggleRes = await setNativeSpeakerEnabled(i % 2 === 0, null);
+      assert.equal(toggleRes.success, true);
+    }
+
+    // 4. Reset audio mode works cleanly
+    await resetNativeAudioMode();
+
+    // 5. Mock audio element fallback ensures muted is always false
+    const mockAudio = {
+      muted: true, // starts muted
+      setSinkId: async () => {},
+    } as unknown as HTMLAudioElement;
+
+    await applyWebAudioRouteFallback(mockAudio, true);
+    assert.equal(mockAudio.muted, false, "Remote audio element is guaranteed unmuted on Speaker On");
+
+    await applyWebAudioRouteFallback(mockAudio, false);
+    assert.equal(mockAudio.muted, false, "Remote audio element is guaranteed unmuted on Speaker Off");
+  });
 });
