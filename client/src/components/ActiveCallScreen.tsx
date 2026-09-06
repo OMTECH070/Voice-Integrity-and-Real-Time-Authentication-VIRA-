@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ActiveCallInfo, CallState } from "../types/call";
 import { formatDuration, useCallTimer } from "../hooks/useCallTimer";
 import { useCallVAD } from "../hooks/useCallVAD";
@@ -48,7 +48,6 @@ export function ActiveCallScreen({
 }: ActiveCallScreenProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duration = useCallTimer(callState === "CONNECTED");
-  const [speakerEnabled, setSpeakerEnabled] = useState(true);
 
   // Real-time rolling buffer & streaming transport for speech analysis
   const analysis = useVoiceAnalysis({
@@ -76,7 +75,6 @@ export function ActiveCallScreen({
       void resetNativeAudioMode();
     };
   }, [callState]);
-
   // Ensure remote audio playback is attached and audible
   useEffect(() => {
     if (audioRef.current && remoteStream) {
