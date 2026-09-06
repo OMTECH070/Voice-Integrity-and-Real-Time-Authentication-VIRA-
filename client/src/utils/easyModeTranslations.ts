@@ -102,6 +102,41 @@ export interface TranslationSchema {
   callSpokenSafe: string;
   callSpokenWarning: string;
   callSpokenHighRisk: string;
+
+  // Authentication Page
+  authSubtitle: string;
+  authBackLink: string;
+  continueWithGoogle: string;
+  connectingGoogle: string;
+  orDivider: string;
+  authSignInTab: string;
+  authRegisterTab: string;
+  authEmailLabel: string;
+  authEmailPlaceholder: string;
+  authPasswordLabel: string;
+  authPasswordPlaceholderLogin: string;
+  authPasswordPlaceholderRegister: string;
+  authDisplayNameLabel: string;
+  authDisplayNamePlaceholder: string;
+  authSignInBtn: string;
+  authSigningInBtn: string;
+  authCreateAccountBtn: string;
+  authCreatingAccountBtn: string;
+  authSuccessTitle: string;
+  authSuccessDesc: string;
+  authShowPassword: string;
+  authHidePassword: string;
+  authEmailRequired: string;
+  authEmailInvalid: string;
+  authPasswordRequired: string;
+  authPasswordTooShort: string;
+  authDisplayNameRequired: string;
+  authDisplayNameTooShort: string;
+  authDisplayNameTooLong: string;
+  authForgotPassword: string;
+  authDontHaveAccount: string;
+  authAlreadyHaveAccount: string;
+  authContinue: string;
 }
 
 export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema> = {
@@ -205,6 +240,41 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
       "Attention! VIRA has detected potential warnings on this call. The voice may be computer generated, or the caller may be asking for money or sensitive information. Do not share any OTP or transfer money.",
     callSpokenHighRisk:
       "Danger! High risk detected on this call. Suspicious patterns and threat signals detected. Hang up immediately and do not share any financial or personal details.",
+
+    // Authentication Page
+    authSubtitle: "Real-time voice integrity and speaker authentication.",
+    authBackLink: "Back to VIRA Overview",
+    continueWithGoogle: "Continue with Google",
+    connectingGoogle: "Connecting to Google...",
+    orDivider: "or",
+    authSignInTab: "Sign In",
+    authRegisterTab: "Register",
+    authEmailLabel: "Email",
+    authEmailPlaceholder: "name@example.com",
+    authPasswordLabel: "Password",
+    authPasswordPlaceholderLogin: "••••••••••••",
+    authPasswordPlaceholderRegister: "Minimum 8 characters",
+    authDisplayNameLabel: "Display Name",
+    authDisplayNamePlaceholder: "Your name",
+    authSignInBtn: "Sign In",
+    authSigningInBtn: "Signing in...",
+    authCreateAccountBtn: "Create Account",
+    authCreatingAccountBtn: "Creating account...",
+    authSuccessTitle: "Authentication successful",
+    authSuccessDesc: "Entering VIRA...",
+    authShowPassword: "Show password",
+    authHidePassword: "Hide password",
+    authEmailRequired: "Email is required",
+    authEmailInvalid: "Please enter a valid email address",
+    authPasswordRequired: "Password is required",
+    authPasswordTooShort: "Password must be at least 8 characters",
+    authDisplayNameRequired: "Display name is required",
+    authDisplayNameTooShort: "Display name must be at least 2 characters",
+    authDisplayNameTooLong: "Display name must be 50 characters or less",
+    authForgotPassword: "Forgot password?",
+    authDontHaveAccount: "Don't have an account?",
+    authAlreadyHaveAccount: "Already have an account?",
+    authContinue: "Continue",
   },
 
   hi: {
@@ -307,5 +377,40 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
       "सावधान! इस कॉल पर चेतावनी मिली है। यह आवाज़ कंप्यूटर से बनाई हुई हो सकती है, या कॉलर पैसे या गुप्त जानकारी मांग रहा है। कोई भी OTP या पैसे न भेजें।",
     callSpokenHighRisk:
       "खतरा! इस कॉल पर उच्च जोखिम पाया गया है। संदिग्ध और डराने-धमकाने वाली बातें दर्ज हुई हैं। तुरंत फोन काट दें और कोई भी जानकारी न दें।",
+
+    // Authentication Page
+    authSubtitle: "रीयल-टाइम आवाज़ सुरक्षा और कॉलर सत्यापन।",
+    authBackLink: "मुख्य पेज पर वापस जाएं",
+    continueWithGoogle: "Google के साथ आगे बढ़ें",
+    connectingGoogle: "Google से जुड़ रहा है...",
+    orDivider: "या",
+    authSignInTab: "साइन इन",
+    authRegisterTab: "नया खाता",
+    authEmailLabel: "ईमेल आईडी",
+    authEmailPlaceholder: "name@example.com",
+    authPasswordLabel: "पासवर्ड",
+    authPasswordPlaceholderLogin: "••••••••••••",
+    authPasswordPlaceholderRegister: "कम से कम 8 अक्षर",
+    authDisplayNameLabel: "आपका नाम",
+    authDisplayNamePlaceholder: "अपना नाम दर्ज करें",
+    authSignInBtn: "साइन इन करें",
+    authSigningInBtn: "साइन इन हो रहा है...",
+    authCreateAccountBtn: "नया खाता बनाएं",
+    authCreatingAccountBtn: "खाता बन रहा है...",
+    authSuccessTitle: "सत्यापन सफल रहा",
+    authSuccessDesc: "वीरा में प्रवेश हो रहा है...",
+    authShowPassword: "पासवर्ड देखें",
+    authHidePassword: "पासवर्ड छुपाएं",
+    authEmailRequired: "ईमेल आईडी भरना ज़रूरी है",
+    authEmailInvalid: "कृपया सही ईमेल पता दर्ज करें",
+    authPasswordRequired: "पासवर्ड भरना ज़रूरी है",
+    authPasswordTooShort: "पासवर्ड कम से कम 8 अक्षरों का होना चाहिए",
+    authDisplayNameRequired: "अपना नाम भरना ज़रूरी है",
+    authDisplayNameTooShort: "नाम कम से कम 2 अक्षरों का होना चाहिए",
+    authDisplayNameTooLong: "नाम 50 अक्षरों से अधिक नहीं हो सकता",
+    authForgotPassword: "पासवर्ड भूल गए?",
+    authDontHaveAccount: "खाता नहीं है?",
+    authAlreadyHaveAccount: "पहले से खाता है?",
+    authContinue: "आगे बढ़ें",
   },
 };
