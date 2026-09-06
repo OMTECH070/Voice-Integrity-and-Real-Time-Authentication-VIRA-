@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ActiveCallInfo, CallState } from "../types/call";
 import { formatDuration, useCallTimer } from "../hooks/useCallTimer";
 import { useCallVAD } from "../hooks/useCallVAD";
@@ -32,6 +32,8 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
+
+
 export function ActiveCallScreen({
   activeCall,
   callState,
@@ -45,7 +47,6 @@ export function ActiveCallScreen({
 }: ActiveCallScreenProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duration = useCallTimer(callState === "CONNECTED");
-  const [speakerEnabled, setSpeakerEnabled] = useState(true);
 
   // Real-time rolling buffer & streaming transport for speech analysis
   const analysis = useVoiceAnalysis({
@@ -64,9 +65,14 @@ export function ActiveCallScreen({
     onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
   });
 
+  // Ensure remote audio playback is attached and audible
   useEffect(() => {
     if (audioRef.current && remoteStream) {
       audioRef.current.srcObject = remoteStream;
+      audioRef.current.muted = false;
+      audioRef.current.play().catch((err) => {
+        console.warn("[VIRA][AUDIO] Remote audio autoplay error:", err);
+      });
     }
   }, [remoteStream]);
 
@@ -89,7 +95,7 @@ export function ActiveCallScreen({
   if (isEasyMode) {
     return (
       <div className="active-call-canvas easy-mode-active" role="main" aria-label="Secure Easy Mode Call">
-        <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+        <audio ref={audioRef} autoPlay playsInline />
         <EasyModeCallScreen
           activeCall={activeCall}
           callState={callState}
@@ -178,7 +184,7 @@ export function ActiveCallScreen({
       </div>
 
       {/* Audio Element */}
-      <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+      <audio ref={audioRef} autoPlay playsInline />
 
       {/* Voice Integrity Section */}
       {callState === "CONNECTED" && (
@@ -214,23 +220,13 @@ export function ActiveCallScreen({
       {/* Call Controls */}
       <div className="call-controls-row-minimal" role="toolbar" aria-label="Call controls">
         {callState === "CONNECTED" && (
-          <>
-            <button
-              className={`btn-call-action-minimal btn-call-mute ${isMuted ? "muted" : ""}`}
-              onClick={onToggleMute}
-              aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-            >
-              {isMuted ? "Unmute" : localVAD.isSpeaking ? "Speaking..." : "Mute"}
-            </button>
-
-            <button
-              className="btn-call-action-minimal btn-call-mute"
-              onClick={() => setSpeakerEnabled((v) => !v)}
-              aria-label={speakerEnabled ? "Mute speaker" : "Unmute speaker"}
-            >
-              {speakerEnabled ? "Speaker On" : "Speaker Off"}
-            </button>
-          </>
+          <button
+            className={`btn-call-action-minimal btn-call-mute ${isMuted ? "muted" : ""}`}
+            onClick={onToggleMute}
+            aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+          >
+            {isMuted ? "Unmute" : localVAD.isSpeaking ? "Speaking..." : "Mute"}
+          </button>
         )}
 
         {canEndOrCancel && (
