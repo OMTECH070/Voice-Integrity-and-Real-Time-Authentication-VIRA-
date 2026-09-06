@@ -38,12 +38,13 @@ export class WebRTCPeer {
     };
 
     this.pc.ontrack = (event) => {
-      if (event.streams[0]) {
-        this.callbacks.onRemoteStream(event.streams[0]);
-      }
+      const stream = event.streams[0] || new MediaStream([event.track]);
+      console.log(`[VIRA][WEBRTC] Remote audio track received: kind=${event.track.kind}, id=${event.track.id}, streamTracks=${stream.getAudioTracks().length}`);
+      this.callbacks.onRemoteStream(stream);
     };
 
     this.pc.onconnectionstatechange = () => {
+      console.log(`[VIRA][WEBRTC] Connection state changed to: ${this.pc.connectionState}`);
       this.callbacks.onConnectionStateChange(this.pc.connectionState);
     };
   }
@@ -56,6 +57,7 @@ export class WebRTCPeer {
   async acquireLocalAudio(): Promise<MediaStream> {
     const stream = await navigator.mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
     this.localStream = stream;
+    console.log(`[VIRA][WEBRTC] Local microphone audio acquired: ${stream.getAudioTracks().length} track(s)`);
     stream.getTracks().forEach((track) => {
       this.pc.addTrack(track, stream);
     });
@@ -89,6 +91,10 @@ export class WebRTCPeer {
       // description is set in rare orderings; don't crash the call over it.
       console.warn("Failed to add ICE candidate", err);
     }
+  }
+
+  getLocalStream(): MediaStream | null {
+    return this.localStream;
   }
 
   setMuted(muted: boolean): void {

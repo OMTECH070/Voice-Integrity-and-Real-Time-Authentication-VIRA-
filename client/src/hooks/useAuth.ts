@@ -69,7 +69,26 @@ export function useAuth(): UseAuthResult {
   // Restore session on load, and keep in sync with auth changes
   // (including the redirect back from Google OAuth).
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Extract any OAuth error from URL hash/search if user cancelled or auth failed
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes("error_description=") || search.includes("error_description=")) {
+      const rawParams = hash.includes("error_description=")
+        ? hash.replace(/^#/, "")
+        : search.replace(/^\?/, "");
+      const params = new URLSearchParams(rawParams);
+      const errorDesc = params.get("error_description");
+      if (errorDesc) {
+        setError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
+      }
+    }
+
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (sessionError) {
+        setError(sessionError.message);
+        setIsLoading(false);
+        return;
+      }
       if (session?.user) {
         loadProfile(session.user.id).finally(() => setIsLoading(false));
       } else {
@@ -146,7 +165,7 @@ export function useAuth(): UseAuthResult {
     setError(null);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/app` },
     });
     if (oauthError) setError(oauthError.message);
     // No further action here — Supabase redirects to Google, then back

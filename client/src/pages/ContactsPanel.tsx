@@ -30,14 +30,6 @@ function rowToProfile(row: ProfileRow): PublicUserProfile {
   };
 }
 
-/**
- * NOTE ON THE SECURITY MODEL: adding a contact stores their unique
- * account id, never their username or display name. If someone later
- * creates a different account with a similar-looking name, it will NOT
- * be treated as known — only the exact original account (by id) is
- * recognized. This is what makes "known" status meaningful even though
- * names, bios, and photos are all just editable text.
- */
 export function ContactsPanel({ ownUserId }: ContactsPanelProps) {
   const [contacts, setContacts] = useState<PublicUserProfile[]>([]);
   const [lookupInput, setLookupInput] = useState("");
@@ -74,8 +66,6 @@ export function ContactsPanel({ ownUserId }: ContactsPanelProps) {
     const trimmed = lookupInput.trim();
     if (!trimmed) return;
 
-    // Look up by username first (friendlier), falling back to treating
-    // the input as a raw user id.
     const byUsername = await supabase
       .from("profiles")
       .select("*")
@@ -90,7 +80,7 @@ export function ContactsPanel({ ownUserId }: ContactsPanelProps) {
     }
 
     if (!targetRow) {
-      setStatusMessage("No user found with that username or id.");
+      setStatusMessage("No user found with that username or ID.");
       return;
     }
 
@@ -111,7 +101,7 @@ export function ContactsPanel({ ownUserId }: ContactsPanelProps) {
     }
 
     setLookupInput("");
-    setStatusMessage("Contact added.");
+    setStatusMessage("Contact added successfully.");
     loadContacts();
   }
 
@@ -125,28 +115,53 @@ export function ContactsPanel({ ownUserId }: ContactsPanelProps) {
   }
 
   return (
-    <div className="contacts-panel">
-      <h3>Known Contacts</h3>
-      <form onSubmit={handleAdd} className="add-contact-form">
+    <div>
+      <form onSubmit={handleAdd} style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <input
           type="text"
-          placeholder="Enter their @username to add as known"
+          placeholder="Enter @username or user ID..."
           value={lookupInput}
           onChange={(e) => setLookupInput(e.target.value)}
+          style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", fontSize: "13px" }}
         />
-        <button type="submit">Add</button>
+        <button type="submit" className="btn-black">
+          Add Contact
+        </button>
       </form>
-      {statusMessage && <p className="contact-status">{statusMessage}</p>}
+      {statusMessage && (
+        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: "0 0 16px 0" }}>
+          {statusMessage}
+        </p>
+      )}
 
       {contacts.length === 0 ? (
-        <p className="empty-state">No known contacts yet.</p>
+        <p className="empty-list-notice">No contacts added yet.</p>
       ) : (
-        <ul className="user-list">
+        <ul className="people-list-minimal">
           {contacts.map((contact) => (
-            <li key={contact.id} className="user-list-item">
-              <span className="user-name">{contact.displayName}</span>
-              <span className="user-status">@{contact.username}</span>
-              <button onClick={() => handleRemove(contact.id)}>Remove</button>
+            <li key={contact.id} className="person-row-minimal">
+              <div className="person-left-meta">
+                <div className="person-avatar-minimal">
+                  <span>{(contact.displayName || contact.username || "U").charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="person-name-text">{contact.displayName}</div>
+                  <div className="person-handle-text">@{contact.username}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemove(contact.id)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-danger)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                Remove
+              </button>
             </li>
           ))}
         </ul>

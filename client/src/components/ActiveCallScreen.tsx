@@ -1,21 +1,30 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActiveCallInfo, CallState } from "../types/call";
 import { formatDuration, useCallTimer } from "../hooks/useCallTimer";
-import { useVoiceVerification } from "../hooks/useVoiceVerification";
+import { useCallVAD } from "../hooks/useCallVAD";
+import { useVoiceAnalysis } from "../hooks/useVoiceAnalysis";
+import { VoiceIntegrityBadge } from "./VoiceIntegrityBadge";
+import { SecurityIndicator, SecurityState } from "./SecurityIndicator";
+import { useEasyMode } from "../context/EasyModeContext";
+import { EasyModeCallScreen } from "./EasyModeCallScreen";
+import type { SpeechSegment } from "../audio/vad/types";
 
 interface ActiveCallScreenProps {
   activeCall: ActiveCallInfo;
   callState: CallState;
+  localStream?: MediaStream | null;
   remoteStream: MediaStream | null;
   isMuted: boolean;
   onToggleMute: () => void;
   onEndCall: () => void;
+  onRemoteSpeechSegment?: (segment: SpeechSegment) => void;
+  onLocalSpeechSegment?: (segment: SpeechSegment) => void;
 }
 
 const STATE_LABELS: Record<CallState, string> = {
-  IDLE: "",
+  IDLE: "Idle",
   CALLING: "Calling...",
-  RINGING: "Incoming call",
+  RINGING: "Ringing...",
   ACCEPTED: "Connecting...",
   CONNECTING: "Connecting...",
   CONNECTED: "Connected",
@@ -23,34 +32,37 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
-const VERIFICATION_LABELS: Record<string, string> = {
-  listening: "Checking voice...",
-  checking: "Checking voice...",
-  verified: "✓ Voice Verified",
-  mismatch: "⚠️ Voice Does Not Match Account",
-  not_enrolled: "Caller has not enrolled their voice",
-  unavailable: "Voice check unavailable",
-};
-
 export function ActiveCallScreen({
   activeCall,
   callState,
+  localStream = null,
   remoteStream,
   isMuted,
   onToggleMute,
   onEndCall,
+  onRemoteSpeechSegment,
+  onLocalSpeechSegment,
 }: ActiveCallScreenProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duration = useCallTimer(callState === "CONNECTED");
+  const [speakerEnabled, setSpeakerEnabled] = useState(true);
 
-  // Only the callee verifies — never the caller, and never self-reported.
-  // See hooks/useVoiceVerification.ts for why.
-  const { status: verificationStatus, score: verificationScore } = useVoiceVerification(
+  // Real-time rolling buffer & streaming transport for speech analysis
+  const analysis = useVoiceAnalysis({
+    callId: activeCall.callId,
+    enabled: callState === "CONNECTED",
+  });
+
+  // Non-intrusive dual-stream VAD observer
+  const { localVAD, remoteVAD } = useCallVAD({
+    localStream,
     remoteStream,
-    callState === "CONNECTED",
-    !activeCall.isCaller,
-    activeCall.remoteUser.id
-  );
+    isLocalMuted: isMuted,
+    onRemoteSpeechSegment,
+    onLocalSpeechSegment,
+    onRemoteSpeechFrame: analysis.handleRemoteSpeechFrame,
+    onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
+  });
 
   useEffect(() => {
     if (audioRef.current && remoteStream) {
@@ -58,41 +70,175 @@ export function ActiveCallScreen({
     }
   }, [remoteStream]);
 
+  // Derive security state for indicator
+  let securityState: SecurityState = "idle";
+  if (callState === "CONNECTED") {
+    if (analysis.integrityStatus === "possible-ai" || analysis.integrityStatus === "speaker-mismatch") {
+      securityState = "warning";
+    } else if (analysis.integrityStatus === "human-verified" || analysis.integrityStatus === "not-enrolled") {
+      securityState = "active";
+    } else if (analysis.integrityStatus === "analysis-unavailable") {
+      securityState = "offline";
+    } else {
+      securityState = "limited";
+    }
+  }
+
+  const { isEasyMode } = useEasyMode();
+
+  if (isEasyMode) {
+    return (
+      <div className="active-call-canvas easy-mode-active" role="main" aria-label="Secure Easy Mode Call">
+        <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+        <EasyModeCallScreen
+          activeCall={activeCall}
+          callState={callState}
+          duration={duration}
+          isMuted={isMuted}
+          onToggleMute={onToggleMute}
+          onEndCall={onEndCall}
+          isSpeakingRemote={remoteVAD.isSpeaking}
+          isSpeakingLocal={localVAD.isSpeaking}
+          integrityStatus={analysis.integrityStatus}
+          spoofScore={analysis.spoofScore}
+          rawLabel={analysis.rawLabel}
+          lastLatencyMs={analysis.lastLatencyMs}
+          sequenceNumber={analysis.lastSentSequenceNumber}
+          speakerSimilarity={analysis.speakerSimilarity}
+          speakerMatchLabel={analysis.speakerMatchLabel}
+          confidence={analysis.confidence}
+          reason={analysis.reason}
+          isSmoothed={analysis.isSmoothed}
+          calibrationVersion={analysis.calibrationVersion}
+          hasRemoteStream={!!remoteStream && remoteStream.getAudioTracks().length > 0}
+          bufferedDurationMs={analysis.bufferedDurationMs}
+          targetWindowDurationMs={analysis.targetWindowDurationMs}
+          analysisStatus={analysis.status}
+          lastAnalyzedTimestampMs={analysis.lastAnalyzedTimestampMs}
+          analysisWindowNumber={analysis.analysisWindowNumber}
+          wav2vec2Status={analysis.wav2vec2Status}
+          wav2vec2Score={analysis.wav2vec2Score}
+          callRiskScore={analysis.callRiskScore}
+          callRiskLevel={analysis.callRiskLevel}
+          conversationalSignals={analysis.conversationalSignals}
+          voiceIntegrityScore={analysis.voiceIntegrityScore}
+        />
+      </div>
+    );
+  }
+
   const canEndOrCancel =
     callState === "CALLING" ||
     callState === "ACCEPTED" ||
     callState === "CONNECTING" ||
     callState === "CONNECTED";
 
-  const verificationLabel = VERIFICATION_LABELS[verificationStatus];
-  const isMismatch = verificationStatus === "mismatch";
+  const initial = (activeCall.remoteUser.username || "U").charAt(0).toUpperCase();
 
   return (
-    <div className="active-call-screen">
-      <h2>{activeCall.remoteUser.username}</h2>
-      <p className="call-status">{STATE_LABELS[callState]}</p>
+    <div className="active-call-canvas" role="main" aria-label="Secure WebRTC Call">
+      {/* Top Status */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+        <div className="call-header-status" style={{ margin: 0 }}>
+          <span style={{ color: callState === "CONNECTED" ? "var(--color-success)" : "var(--color-warning)" }}>●</span>
+          <span>{STATE_LABELS[callState]}</span>
+        </div>
+        <SecurityIndicator state={securityState} />
+      </div>
 
-      {callState === "CONNECTED" && (
-        <p className="call-timer">{formatDuration(duration)}</p>
-      )}
-
-      {!activeCall.isCaller && callState === "CONNECTED" && verificationLabel && (
-        <p className={isMismatch ? "voice-mismatch-badge" : "voice-status-badge"}>
-          {verificationLabel}
-          {verificationScore !== null && ` (score: ${verificationScore.toFixed(3)})`}
-        </p>
-      )}
-
-      <audio ref={audioRef} autoPlay playsInline />
-
-      <div className="call-controls">
-        {callState === "CONNECTED" && (
-          <button onClick={onToggleMute}>
-            {isMuted ? "Unmute" : "Mute"}
-          </button>
+      {/* Large Minimal Avatar */}
+      <div className="caller-avatar-circle-minimal">
+        <span>{initial}</span>
+        {callState === "CONNECTED" && remoteVAD.isSpeaking && (
+          <div className="speech-active-ring" aria-hidden="true" />
         )}
+      </div>
+
+      <h2 className="caller-name-minimal">
+        {activeCall.remoteUser.username}
+      </h2>
+      <p className="caller-handle-minimal">@{activeCall.remoteUser.username}</p>
+
+      {/* Call Timer */}
+      {callState === "CONNECTED" && (
+        <div className="call-timer-minimal" aria-live="off">
+          {formatDuration(duration)}
+        </div>
+      )}
+
+      {/* Monochrome Waveform */}
+      <div className="monochrome-waveform" aria-hidden="true">
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+        <div className={`mono-wave-bar ${remoteVAD.isSpeaking ? "speaking" : ""}`} />
+      </div>
+
+      {/* Audio Element */}
+      <audio ref={audioRef} autoPlay playsInline muted={!speakerEnabled} />
+
+      {/* Voice Integrity Section */}
+      {callState === "CONNECTED" && (
+        <VoiceIntegrityBadge
+          integrityStatus={analysis.integrityStatus}
+          spoofScore={analysis.spoofScore}
+          rawLabel={analysis.rawLabel}
+          lastLatencyMs={analysis.lastLatencyMs}
+          sequenceNumber={analysis.lastSentSequenceNumber}
+          speakerSimilarity={analysis.speakerSimilarity}
+          speakerMatchLabel={analysis.speakerMatchLabel}
+          confidence={analysis.confidence}
+          reason={analysis.reason}
+          isSmoothed={analysis.isSmoothed}
+          calibrationVersion={analysis.calibrationVersion}
+          hasRemoteStream={!!remoteStream && remoteStream.getAudioTracks().length > 0}
+          isRemoteSpeaking={remoteVAD.isSpeaking}
+          bufferedDurationMs={analysis.bufferedDurationMs}
+          targetWindowDurationMs={analysis.targetWindowDurationMs}
+          analysisStatus={analysis.status}
+          lastAnalyzedTimestampMs={analysis.lastAnalyzedTimestampMs}
+          analysisWindowNumber={analysis.analysisWindowNumber}
+          remoteUserId={activeCall.remoteUser.id}
+          wav2vec2Status={analysis.wav2vec2Status}
+          wav2vec2Score={analysis.wav2vec2Score}
+          callRiskScore={analysis.callRiskScore}
+          callRiskLevel={analysis.callRiskLevel}
+          conversationalSignals={analysis.conversationalSignals}
+          voiceIntegrityScore={analysis.voiceIntegrityScore}
+        />
+      )}
+
+      {/* Call Controls */}
+      <div className="call-controls-row-minimal" role="toolbar" aria-label="Call controls">
+        {callState === "CONNECTED" && (
+          <>
+            <button
+              className={`btn-call-action-minimal btn-call-mute ${isMuted ? "muted" : ""}`}
+              onClick={onToggleMute}
+              aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+            >
+              {isMuted ? "Unmute" : localVAD.isSpeaking ? "Speaking..." : "Mute"}
+            </button>
+
+            <button
+              className="btn-call-action-minimal btn-call-mute"
+              onClick={() => setSpeakerEnabled((v) => !v)}
+              aria-label={speakerEnabled ? "Mute speaker" : "Unmute speaker"}
+            >
+              {speakerEnabled ? "Speaker On" : "Speaker Off"}
+            </button>
+          </>
+        )}
+
         {canEndOrCancel && (
-          <button className="btn-end" onClick={onEndCall}>
+          <button
+            className="btn-call-action-minimal btn-call-end"
+            onClick={onEndCall}
+            aria-label="End call"
+          >
             End Call
           </button>
         )}

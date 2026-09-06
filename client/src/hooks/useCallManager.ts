@@ -20,6 +20,7 @@ export interface UseCallManagerResult {
   callState: CallState;
   activeCall: ActiveCallInfo | null;
   error: CallError | null;
+  localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   isMuted: boolean;
   register: (accountId: string, username: string) => void;
@@ -65,8 +66,8 @@ export function useCallManager(): UseCallManagerResult {
     socket.on("presence:self", ({ self: selfDto }) => setSelf(selfDto));
     socket.on("presence:users", ({ users: list }) => setUsers(list));
 
-    socket.on("call:incoming", ({ callId, from, relationship }) => {
-      setActiveCall({ callId, remoteUser: from, isCaller: false, relationship });
+    socket.on("call:incoming", ({ callId, from }) => {
+      setActiveCall({ callId, remoteUser: from, isCaller: false });
       setCallState("RINGING");
     });
 
@@ -261,6 +262,7 @@ export function useCallManager(): UseCallManagerResult {
     callState,
     activeCall,
     error,
+    localStream: webrtc.localStream,
     remoteStream: webrtc.remoteStream,
     isMuted: webrtc.isMuted,
     register,

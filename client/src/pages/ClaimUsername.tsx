@@ -17,31 +17,40 @@ export function ClaimUsername({ auth }: ClaimUsernameProps) {
   }
 
   return (
-    <div className="page-container">
-      <h1>Choose a username</h1>
-      <p className="tagline">
-        This is your permanent, unique identity in VIRA — it's how people
-        recognize your account for certain (unlike your display name or
-        photo, this can't be duplicated by someone else).
+    <div className="page-container" style={{ maxWidth: "380px", textAlign: "left", marginTop: "80px" }}>
+      <h1 className="brand-logo-text" style={{ fontSize: "22px", marginBottom: "6px" }}>Choose Username</h1>
+      <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", margin: "0 0 20px 0", lineHeight: 1.4 }}>
+        This is your unique handle in VIRA used by contacts to verify your identity.
       </p>
 
       {auth.error && (
-        <div className="error-banner">
+        <div className="error-banner" role="alert">
           <span>{auth.error}</span>
-          <button onClick={auth.dismissError}>&times;</button>
+          <button onClick={auth.dismissError} aria-label="Dismiss error">&times;</button>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="auth-form">
-        <input
-          type="text"
-          placeholder="username (lowercase, no spaces)"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoFocus
-        />
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Checking..." : "Claim Username"}
+        <div>
+          <label htmlFor="claim-username">Username</label>
+          <input
+            id="claim-username"
+            type="text"
+            placeholder="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase())}
+            autoFocus
+            required
+            pattern="^[a-zA-Z0-9_.-]+$"
+          />
+        </div>
+        <button
+          type="submit"
+          className="btn-black"
+          disabled={submitting || !username.trim()}
+          style={{ width: "100%", padding: "10px" }}
+        >
+          {submitting ? "Claiming..." : "Claim Username"}
         </button>
       </form>
     </div>

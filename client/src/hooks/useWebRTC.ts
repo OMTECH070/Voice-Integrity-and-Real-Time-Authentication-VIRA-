@@ -4,6 +4,7 @@ import { CallErrorCode } from "../types/call";
 import { IceCandidatePayload } from "../types/socket-events";
 
 export interface UseWebRTCResult {
+  localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   connectionState: RTCPeerConnectionState | "idle";
   isMuted: boolean;
@@ -12,6 +13,7 @@ export interface UseWebRTCResult {
   }) => WebRTCPeer;
   acquireLocalAudio: (peer: WebRTCPeer) => Promise<{
     ok: true;
+    stream: MediaStream;
   } | {
     ok: false;
     errorCode: CallErrorCode;
@@ -28,6 +30,7 @@ export interface UseWebRTCResult {
  * so components re-render when they happen.
  */
 export function useWebRTC(): UseWebRTCResult {
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [connectionState, setConnectionState] = useState<
     RTCPeerConnectionState | "idle"
@@ -37,6 +40,7 @@ export function useWebRTC(): UseWebRTCResult {
 
   const createPeer = useCallback(
     (callbacks: { onIceCandidate: (candidate: IceCandidatePayload) => void }) => {
+      setLocalStream(null);
       setRemoteStream(null);
       setConnectionState("new");
       return new WebRTCPeer({
@@ -50,8 +54,9 @@ export function useWebRTC(): UseWebRTCResult {
 
   const acquireLocalAudio = useCallback(async (peer: WebRTCPeer) => {
     try {
-      await peer.acquireLocalAudio();
-      return { ok: true as const };
+      const stream = await peer.acquireLocalAudio();
+      setLocalStream(stream);
+      return { ok: true as const, stream };
     } catch (err) {
       const domError = err as DOMException;
       const errorCode: CallErrorCode =
@@ -73,6 +78,7 @@ export function useWebRTC(): UseWebRTCResult {
 
   const cleanup = useCallback((peer: WebRTCPeer | null) => {
     peer?.close();
+    setLocalStream(null);
     setRemoteStream(null);
     setConnectionState("idle");
     setIsMuted(false);
@@ -80,6 +86,7 @@ export function useWebRTC(): UseWebRTCResult {
   }, []);
 
   return {
+    localStream,
     remoteStream,
     connectionState,
     isMuted,

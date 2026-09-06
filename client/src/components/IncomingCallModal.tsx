@@ -1,49 +1,90 @@
 import { UserDTO } from "../types/user";
-import { CallerRelationship } from "../types/contacts";
 
 interface IncomingCallModalProps {
   caller: UserDTO;
-  relationship?: CallerRelationship;
   onAccept: () => void;
   onReject: () => void;
 }
 
 export function IncomingCallModal({
   caller,
-  relationship,
   onAccept,
   onReject,
 }: IncomingCallModalProps) {
-  const isUnknown = relationship === "unknown";
+  const initial = (caller.username || "U").charAt(0).toUpperCase();
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h2>Incoming call</h2>
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="incoming-call-title"
+    >
+      <div className="modal" style={{ maxWidth: "380px", textAlign: "center", padding: "32px 24px" }}>
+        <h2
+          id="incoming-call-title"
+          style={{
+            margin: "0 0 20px 0",
+            fontSize: "18px",
+            fontWeight: 700,
+            letterSpacing: "-0.3px",
+            color: "var(--color-black)",
+          }}
+        >
+          Incoming Secure Call
+        </h2>
 
-        {isUnknown ? (
-          <div className="unknown-caller-badge">
-            ⚠️ Unknown Caller
-          </div>
-        ) : (
-          <div className="known-caller-badge">✓ Known Contact</div>
-        )}
+        {/* Minimal Avatar */}
+        <div className="incoming-avatar-minimal">
+          <span>{initial}</span>
+        </div>
 
-        <p>{caller.username} is calling you...</p>
+        <h3
+          style={{
+            margin: "0 0 2px 0",
+            fontSize: "20px",
+            fontWeight: 700,
+            color: "var(--color-black)",
+          }}
+        >
+          {caller.username}
+        </h3>
+        <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "var(--text-muted)" }}>
+          @{caller.username}
+        </p>
 
-        {isUnknown && (
-          <p className="unknown-caller-note">
-            This account is not in your contacts. Be cautious if they ask
-            for money, passwords, or verification codes.
-          </p>
-        )}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "12px",
+            color: "var(--color-success)",
+            fontWeight: 600,
+            marginBottom: "28px",
+          }}
+        >
+          <span>●</span>
+          <span>Voice verification enabled</span>
+        </div>
 
-        <div className="modal-actions">
-          <button className="btn-accept" onClick={onAccept}>
-            Accept
+        <div className="modal-actions" style={{ justifyContent: "center", gap: "12px" }}>
+          <button
+            className="btn-outline"
+            onClick={onReject}
+            style={{ padding: "9px 24px" }}
+            aria-label="Decline incoming call"
+          >
+            Decline
           </button>
-          <button className="btn-reject" onClick={onReject}>
-            Reject
+
+          <button
+            className="btn-black"
+            onClick={onAccept}
+            style={{ padding: "9px 28px" }}
+            aria-label="Accept incoming call"
+          >
+            Accept
           </button>
         </div>
       </div>

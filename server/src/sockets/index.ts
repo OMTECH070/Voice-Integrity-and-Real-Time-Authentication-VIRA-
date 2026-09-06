@@ -8,6 +8,7 @@ import {
 import { registerPresenceHandlers } from "./presence.socket";
 import { registerCallHandlers } from "./call.socket";
 import { registerWebRTCHandlers } from "./webrtc.socket";
+import { registerVoiceHandlers } from "./voice.socket";
 import { logger } from "../utils/logger";
 
 type TypedServer = Server<
@@ -33,5 +34,6 @@ export function registerSocketHandlers(io: TypedServer): void {
     registerCallHandlers(io, socket);
     registerPresenceHandlers(io, socket);
     registerWebRTCHandlers(io, socket);
+    registerVoiceHandlers(io, socket);
   });
 }

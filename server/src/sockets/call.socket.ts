@@ -8,8 +8,8 @@ import {
 import { toUserDTO } from "../types/user";
 import { presenceService } from "../services/presence.service";
 import { callService } from "../services/call.service";
-import { getRelationship } from "../services/contacts.service";
 import { broadcastUserList } from "./presence.socket";
+import { cleanupVoiceAnalysisSession } from "./voice.socket";
 import { logger } from "../utils/logger";
 
 type TypedServer = Server<
@@ -26,7 +26,7 @@ type TypedSocket = Socket<
 >;
 
 export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void {
-  socket.on("call:request", async ({ toUserId }) => {
+  socket.on("call:request", ({ toUserId }) => {
     const callerId = socket.data.userId;
     if (!callerId) return;
 
@@ -75,20 +75,13 @@ export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void
 
     const session = callService.createSession(callerId, toUserId);
 
-    // Known/unknown is checked FROM THE CALLEE'S perspective: does the
-    // caller's account id exist in the callee's contacts? This is why
-    // it's awaited here before emitting call:incoming — the badge must
-    // be present the moment the notification appears, not added after.
-    const relationship = await getRelationship(toUserId, callerId);
-
     logger.info(
-      `Call requested: ${caller.username} -> ${callee.username} (${session.callId}, caller is ${relationship} to callee)`
+      `Call requested: ${caller.username} -> ${callee.username} (${session.callId})`
     );
 
     io.to(callee.socketId).emit("call:incoming", {
       callId: session.callId,
       from: toUserDTO(caller),
-      relationship,
     });
     socket.emit("call:ringing", {
       callId: session.callId,
@@ -137,6 +130,7 @@ export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void
     const caller = presenceService.getById(session.callerId);
 
     callService.endSession(callId);
+    cleanupVoiceAnalysisSession(callId);
     logger.info(`Call rejected: ${callId}`);
 
     if (caller && callee) {
@@ -167,6 +161,7 @@ export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void
     const otherUser = presenceService.getById(otherUserId);
 
     callService.endSession(callId);
+    cleanupVoiceAnalysisSession(callId);
     presenceService.setStatus(session.callerId, "available");
     presenceService.setStatus(session.calleeId, "available");
     broadcastUserList(io);
@@ -189,6 +184,8 @@ export function registerCallHandlers(io: TypedServer, socket: TypedSocket): void
 
     const session = callService.endActiveCallForUser(userId);
     if (!session) return;
+
+    cleanupVoiceAnalysisSession(session.callId);
 
     const otherUserId =
       session.callerId === userId ? session.calleeId : session.callerId;
