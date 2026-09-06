@@ -7,6 +7,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { AdminDatasetView } from "./components/AdminDatasetView";
 import { EasyModeProvider } from "./context/EasyModeContext";
 import { EasyModeLanguageModal } from "./components/EasyModeLanguageModal";
+import { ViraAppSkeleton } from "./components/ViraAppSkeleton";
 import "./App.css";
 
 type Route = "landing" | "login" | "signup" | "app" | "admin-dataset";
@@ -217,15 +218,7 @@ function AppContent() {
 
   // 3. Application route (at '/app')
   if (auth.isLoading) {
-    return (
-      <div className="page-container" style={{ textAlign: "center", marginTop: "100px" }}>
-        <h1 className="brand-logo-text" style={{ fontSize: "24px", marginBottom: "8px" }}>VIRA</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 20px 0" }}>
-          Authenticating secure session...
-        </p>
-        <div className="cyber-spinner" />
-      </div>
-    );
+    return <ViraAppSkeleton message="Authenticating secure session..." />;
   }
 
   // Protected route: unauthenticated user trying to access /app is shown AuthPage

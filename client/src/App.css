@@ -4696,3 +4696,501 @@ html.lenis, html.lenis body {
   }
 }
 
+/* ==========================================================================
+   VIRA Skeleton Loading Screen
+   ========================================================================== */
+
+.vira-skeleton-page-wrapper {
+  background-color: #0a0b10;
+  color: #e5e7eb;
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px 24px 80px 24px;
+  box-sizing: border-box;
+}
+
+.vira-skeleton-container {
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Status / Initializing pill indicator */
+.vira-skeleton-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vira-skeleton-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: 500;
+  color: #a3a3a3;
+  letter-spacing: 0.2px;
+}
+
+.vira-skeleton-status-dot.pulsing {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 8px rgba(22, 163, 74, 0.6);
+  animation: vira-pulse-dot 1.5s infinite ease-in-out;
+}
+
+.vira-skeleton-status-dot.error {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+}
+
+.vira-skeleton-retry-btn {
+  background: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  color: #f87171;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vira-skeleton-retry-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+}
+
+/* Base Skeleton Shimmer Block */
+.vira-skeleton-block {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: vira-shimmer 1.8s infinite ease-in-out;
+}
+
+@keyframes vira-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes vira-pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+/* Navbar Skeleton */
+.vira-skeleton-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 36px;
+}
+
+.vira-skeleton-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.vira-skeleton-brand-logo {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.vira-skeleton-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.vira-skeleton-nav-links .nav-link-item {
+  width: 52px;
+  height: 14px;
+}
+
+.vira-skeleton-nav-links .nav-link-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.vira-skeleton-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vira-skeleton-nav-right .toggle-pill {
+  width: 86px;
+  height: 28px;
+  border-radius: 9999px;
+}
+
+.vira-skeleton-nav-right .user-pill {
+  width: 80px;
+  height: 24px;
+  border-radius: 9999px;
+}
+
+.vira-skeleton-nav-right .icon-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.vira-skeleton-nav-right .text-btn {
+  width: 44px;
+  height: 14px;
+}
+
+/* Divider */
+.vira-skeleton-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 32px 0;
+}
+
+/* Editorial Header Skeleton */
+.vira-skeleton-editorial-header {
+  padding: 8px 0 28px 0;
+}
+
+.vira-skeleton-editorial-header .title-line {
+  height: 32px;
+  width: 68%;
+  max-width: 440px;
+  margin-bottom: 14px;
+}
+
+.vira-skeleton-editorial-header .subtitle-line {
+  height: 15px;
+  width: 90%;
+  max-width: 540px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-editorial-header .subtitle-line.short {
+  width: 58%;
+  margin-bottom: 24px;
+}
+
+.vira-skeleton-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vira-skeleton-actions-row .btn-pill.primary {
+  width: 140px;
+  height: 38px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.vira-skeleton-actions-row .btn-pill.outline {
+  width: 96px;
+  height: 38px;
+  border-radius: 4px;
+}
+
+/* Section Common */
+.vira-skeleton-section .section-label {
+  width: 60px;
+  height: 14px;
+  margin-bottom: 16px;
+}
+
+/* Voice ID Skeleton */
+.vira-skeleton-voice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.vira-skeleton-voice-row .voice-info-col .status-tag {
+  width: 54px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-voice-row .voice-info-col .voice-title {
+  width: 140px;
+  height: 18px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-voice-row .voice-info-col .voice-desc {
+  width: 280px;
+  height: 14px;
+}
+
+.vira-skeleton-voice-row .btn-pill.outline {
+  width: 120px;
+  height: 36px;
+  border-radius: 4px;
+}
+
+/* People Directory Skeleton */
+.vira-skeleton-people-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.vira-skeleton-people-header .search-input {
+  width: 180px;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.vira-skeleton-people-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.vira-skeleton-person-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vira-skeleton-person-row .person-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vira-skeleton-person-row .person-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.vira-skeleton-person-row .person-name {
+  width: 90px;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-person-row .person-handle {
+  width: 60px;
+  height: 12px;
+}
+
+.vira-skeleton-person-row .person-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vira-skeleton-person-row .person-status {
+  width: 44px;
+  height: 12px;
+}
+
+.vira-skeleton-person-row .call-button {
+  width: 54px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+/* System Status Table Skeleton */
+.vira-skeleton-system-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.vira-skeleton-system-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vira-skeleton-system-row .system-label {
+  width: 130px;
+  height: 14px;
+}
+
+.vira-skeleton-system-row .system-val {
+  width: 45px;
+  height: 14px;
+}
+
+/* Easy Mode Skeleton Content */
+.vira-skeleton-easy-content {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.vira-skeleton-easy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.vira-skeleton-easy-header .easy-title {
+  width: 240px;
+  height: 28px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-header .easy-subtitle {
+  width: 320px;
+  height: 16px;
+}
+
+.vira-skeleton-easy-header .easy-listen-btn {
+  width: 110px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.vira-skeleton-easy-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.vira-skeleton-easy-rule-card {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vira-skeleton-easy-rule-card .icon-block {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-easy-rule-card .card-title {
+  width: 150px;
+  height: 16px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-rule-card .card-desc {
+  width: 100%;
+  height: 13px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-easy-rule-card .card-desc.short {
+  width: 70%;
+}
+
+.vira-skeleton-easy-contacts {
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vira-skeleton-easy-contacts .section-heading {
+  width: 140px;
+  height: 20px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-contacts .section-subheading {
+  width: 220px;
+  height: 14px;
+  margin-bottom: 20px;
+}
+
+.vira-skeleton-easy-contact-list {
+  display: grid;
+  gap: 12px;
+}
+
+.vira-skeleton-easy-contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vira-skeleton-easy-contact-row .contact-name {
+  width: 100px;
+  height: 17px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-easy-contact-row .contact-status {
+  width: 50px;
+  height: 13px;
+}
+
+.vira-skeleton-easy-contact-row .contact-call-btn {
+  width: 120px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .vira-skeleton-block {
+    animation: none !important;
+    background-image: none !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
+  .vira-skeleton-status-dot.pulsing {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+

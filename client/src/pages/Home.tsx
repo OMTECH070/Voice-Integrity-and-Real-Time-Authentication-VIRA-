@@ -14,6 +14,7 @@ import { supabase } from "../services/supabaseClient";
 import { useEasyMode } from "../context/EasyModeContext";
 import { EasyModeNavToggle } from "../components/EasyModeNavToggle";
 import { EasyModeListenButton } from "../components/EasyModeListenButton";
+import { ViraAppSkeleton } from "../components/ViraAppSkeleton";
 
 interface HomeProps {
   auth: UseAuthResult;
@@ -84,13 +85,15 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
 
   if (!self) {
     return (
-      <div className="page-container app-connecting-container">
-        <h1 className="brand-logo-text" style={{ fontSize: "24px", marginBottom: "8px" }}>VIRA</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 20px 0" }}>
-          Connecting to secure WebRTC signaling network...
-        </p>
-        <div className="cyber-spinner" />
-      </div>
+      <ViraAppSkeleton
+        message="Connecting to secure WebRTC signaling network..."
+        error={error ? error.message : null}
+        onRetry={() => {
+          if (auth.user) {
+            register(auth.user.id, auth.user.displayName);
+          }
+        }}
+      />
     );
   }
 
