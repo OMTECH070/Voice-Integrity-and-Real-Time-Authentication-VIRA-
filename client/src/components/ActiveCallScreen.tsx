@@ -64,11 +64,29 @@ export function ActiveCallScreen({
     onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
   });
 
+  // Synchronize remote audio element playback and speaker mute IDL property
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = !speakerEnabled;
+    }
+  }, [speakerEnabled]);
+
   useEffect(() => {
     if (audioRef.current && remoteStream) {
       audioRef.current.srcObject = remoteStream;
+      audioRef.current.muted = !speakerEnabled;
     }
-  }, [remoteStream]);
+  }, [remoteStream, speakerEnabled]);
+
+  const toggleSpeaker = () => {
+    setSpeakerEnabled((prev) => {
+      const next = !prev;
+      if (audioRef.current) {
+        audioRef.current.muted = !next;
+      }
+      return next;
+    });
+  };
 
   // Derive security state for indicator
   let securityState: SecurityState = "idle";
@@ -224,8 +242,8 @@ export function ActiveCallScreen({
             </button>
 
             <button
-              className="btn-call-action-minimal btn-call-mute"
-              onClick={() => setSpeakerEnabled((v) => !v)}
+              className={`btn-call-action-minimal btn-call-mute ${!speakerEnabled ? "muted" : ""}`}
+              onClick={toggleSpeaker}
               aria-label={speakerEnabled ? "Mute speaker" : "Unmute speaker"}
             >
               {speakerEnabled ? "Speaker On" : "Speaker Off"}

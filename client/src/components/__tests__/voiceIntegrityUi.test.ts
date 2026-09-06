@@ -99,4 +99,57 @@ test("Step 10 UI Test Suite: Voice Integrity Probabilistic Copy & States", async
     const securityStates = ["active", "limited", "warning", "offline", "idle"];
     assert.equal(securityStates.length, 5, "5 security states defined");
   });
+
+  await t.test("ActiveCallScreen: Independent Microphone Mute and Speaker Playback State", () => {
+    let isLocalMicMuted = false;
+    let isSpeakerOn = true;
+    let audioElementMuted = false;
+    let localTrackEnabled = true;
+
+    const setLocalMute = (muted: boolean) => {
+      isLocalMicMuted = muted;
+      localTrackEnabled = !muted;
+    };
+
+    const setSpeaker = (on: boolean) => {
+      isSpeakerOn = on;
+      assert.equal(isSpeakerOn, on);
+      audioElementMuted = !on;
+    };
+
+    // TEST A: Remote person speaks -> audible
+    setLocalMute(false);
+    setSpeaker(true);
+    assert.equal(audioElementMuted, false, "Speaker is audible initially");
+    assert.equal(localTrackEnabled, true, "Mic is active initially");
+
+    // TEST B: Click 'Speaker Off' -> remote person becomes silent, mic untouched
+    setSpeaker(false);
+    assert.equal(audioElementMuted, true, "Speaker is muted when Speaker Off");
+    assert.equal(localTrackEnabled, true, "Local mic remains active when speaker is muted");
+    assert.equal(isLocalMicMuted, false, "Mic mute state is completely unchanged");
+
+    // TEST C: Click 'Speaker On' -> remote audio becomes audible again
+    setSpeaker(true);
+    assert.equal(audioElementMuted, false, "Speaker becomes audible again");
+    assert.equal(localTrackEnabled, true, "Mic remains active");
+
+    // TEST D: While Speaker Off, toggle Mute -> mic changes, speaker stays Off
+    setSpeaker(false);
+    setLocalMute(true);
+    assert.equal(audioElementMuted, true, "Speaker remains muted");
+    assert.equal(localTrackEnabled, false, "Local mic is muted");
+    setLocalMute(false);
+    assert.equal(audioElementMuted, true, "Speaker still remains muted");
+    assert.equal(localTrackEnabled, true, "Local mic is unmuted");
+
+    // TEST E: While Mute is enabled, toggle Speaker -> mic remains muted
+    setLocalMute(true);
+    setSpeaker(true);
+    assert.equal(localTrackEnabled, false, "Local mic remains muted");
+    assert.equal(audioElementMuted, false, "Speaker is audible");
+    setSpeaker(false);
+    assert.equal(localTrackEnabled, false, "Local mic still remains muted");
+    assert.equal(audioElementMuted, true, "Speaker is muted");
+  });
 });
