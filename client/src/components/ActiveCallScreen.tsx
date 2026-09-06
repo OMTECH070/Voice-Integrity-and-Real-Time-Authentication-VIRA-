@@ -80,6 +80,7 @@ async function routeAudioOutput(
       const targetId = speakerDevice
         ? speakerDevice.deviceId
         : (audioOutputs.find((d) => d.deviceId === "default")?.deviceId || "");
+      console.log(`[VIRA][AUDIO] Speaker route -> Loudspeaker: "${speakerDevice?.label || "default"}" (id: ${targetId || "default"})`);
       await audioEl.setSinkId(targetId);
     } else {
       // Speaker Off: Route to earpiece / handset / communications receiver / default output
@@ -97,10 +98,12 @@ async function routeAudioOutput(
       });
 
       const targetId = earpieceDevice ? earpieceDevice.deviceId : "";
+      console.log(`[VIRA][AUDIO] Speaker route -> Earpiece / Default Receiver: "${earpieceDevice?.label || "default"}" (id: ${targetId || "default"})`);
       await audioEl.setSinkId(targetId);
     }
   } catch (err) {
-    console.warn("[VIRA][AUDIO] setSinkId routing fallback:", err);
+    console.warn("[VIRA][AUDIO] setSinkId routing fallback (audio remains audible):", err);
+    audioEl.muted = false;
   }
 }
 
@@ -141,6 +144,9 @@ export function ActiveCallScreen({
     if (audioRef.current && remoteStream) {
       audioRef.current.srcObject = remoteStream;
       audioRef.current.muted = false;
+      audioRef.current.play().catch((err) => {
+        console.warn("[VIRA][AUDIO] Remote audio autoplay error:", err);
+      });
       void routeAudioOutput(audioRef.current, speakerEnabled);
     }
   }, [remoteStream]);
