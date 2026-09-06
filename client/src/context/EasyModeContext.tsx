@@ -31,7 +31,11 @@ const EasyModeContext = createContext<EasyModeContextType | null>(null);
 export function EasyModeProvider({ children }: { children: ReactNode }) {
   const [isEasyMode, setIsEasyMode] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem(STORAGE_KEY_ACTIVE) === "true";
+      const sess = sessionStorage.getItem(STORAGE_KEY_ACTIVE);
+      if (sess !== null) return sess === "true";
+      const local = localStorage.getItem(STORAGE_KEY_ACTIVE);
+      if (local !== null) return local === "true";
+      return false;
     } catch {
       return false;
     }
@@ -39,8 +43,10 @@ export function EasyModeProvider({ children }: { children: ReactNode }) {
 
   const [language, setLanguageState] = useState<EasyModeLanguage>(() => {
     try {
-      const stored = sessionStorage.getItem(STORAGE_KEY_LANG);
-      if (stored === "hi" || stored === "en") return stored;
+      const sess = sessionStorage.getItem(STORAGE_KEY_LANG);
+      if (sess === "hi" || sess === "en") return sess;
+      const local = localStorage.getItem(STORAGE_KEY_LANG);
+      if (local === "hi" || local === "en") return local;
     } catch {
       // Fallback
     }
@@ -83,6 +89,8 @@ export function EasyModeProvider({ children }: { children: ReactNode }) {
     try {
       sessionStorage.setItem(STORAGE_KEY_LANG, lang);
       sessionStorage.setItem(STORAGE_KEY_ACTIVE, "true");
+      localStorage.setItem(STORAGE_KEY_LANG, lang);
+      localStorage.setItem(STORAGE_KEY_ACTIVE, "true");
     } catch {
       // Ignore
     }
@@ -100,6 +108,7 @@ export function EasyModeProvider({ children }: { children: ReactNode }) {
     setIsEasyMode(false);
     try {
       sessionStorage.setItem(STORAGE_KEY_ACTIVE, "false");
+      localStorage.setItem(STORAGE_KEY_ACTIVE, "false");
     } catch {
       // Ignore
     }
@@ -125,6 +134,7 @@ export function EasyModeProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     try {
       sessionStorage.setItem(STORAGE_KEY_LANG, lang);
+      localStorage.setItem(STORAGE_KEY_LANG, lang);
     } catch {
       // Ignore
     }

@@ -1,6 +1,9 @@
 import { FormEvent, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { UseAuthResult } from "../hooks/useAuth";
+import { useEasyMode } from "../context/EasyModeContext";
+import { EasyModeNavToggle } from "../components/EasyModeNavToggle";
+import { TranslationSchema } from "../utils/easyModeTranslations";
 
 interface AuthPageProps {
   auth: UseAuthResult;
@@ -11,29 +14,6 @@ interface AuthPageProps {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function validateEmail(val: string): string | null {
-  const trimmed = val.trim();
-  if (!trimmed) return "Email is required";
-  if (!EMAIL_REGEX.test(trimmed)) return "Please enter a valid email address";
-  return null;
-}
-
-function validatePassword(val: string, currentMode: "login" | "register"): string | null {
-  if (!val) return "Password is required";
-  if (currentMode === "register" && val.length < 8) {
-    return "Password must be at least 8 characters";
-  }
-  return null;
-}
-
-function validateDisplayName(val: string): string | null {
-  const trimmed = val.trim();
-  if (!trimmed) return "Display name is required";
-  if (trimmed.length < 2) return "Display name must be at least 2 characters";
-  if (trimmed.length > 50) return "Display name must be 50 characters or less";
-  return null;
-}
 
 function GoogleIcon() {
   return (
@@ -83,6 +63,16 @@ export function AuthPage({
   onSuccess,
   onAuthSuccessStart,
 }: AuthPageProps) {
+  let isEasyMode = false;
+  let t: (key: keyof TranslationSchema) => string = () => "";
+  try {
+    const easy = useEasyMode();
+    isEasyMode = easy.isEasyMode;
+    t = easy.t;
+  } catch {
+    // Fallback if rendered outside EasyModeProvider
+  }
+
   const [mode, setMode] = useState<"login" | "register">(initialMode);
 
   useEffect(() => {
@@ -110,12 +100,40 @@ export function AuthPage({
     setTouched({});
     setShowPassword(false);
     if (auth.error) auth.dismissError();
+    try {
+      window.history.replaceState(null, "", newMode === "register" ? "/signup" : "/login");
+    } catch {
+      // Ignore
+    }
+  };
+
+  const getEmailError = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return isEasyMode ? t("authEmailRequired") : "Email is required";
+    if (!EMAIL_REGEX.test(trimmed)) return isEasyMode ? t("authEmailInvalid") : "Please enter a valid email address";
+    return null;
+  };
+
+  const getPasswordError = (val: string, currentMode: "login" | "register"): string | null => {
+    if (!val) return isEasyMode ? t("authPasswordRequired") : "Password is required";
+    if (currentMode === "register" && val.length < 8) {
+      return isEasyMode ? t("authPasswordTooShort") : "Password must be at least 8 characters";
+    }
+    return null;
+  };
+
+  const getDisplayNameError = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return isEasyMode ? t("authDisplayNameRequired") : "Display name is required";
+    if (trimmed.length < 2) return isEasyMode ? t("authDisplayNameTooShort") : "Display name must be at least 2 characters";
+    if (trimmed.length > 50) return isEasyMode ? t("authDisplayNameTooLong") : "Display name must be 50 characters or less";
+    return null;
   };
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
     if (touched.email) {
-      const err = validateEmail(val);
+      const err = getEmailError(val);
       setErrors((prev) => ({ ...prev, email: err || undefined }));
     }
   };
@@ -123,7 +141,7 @@ export function AuthPage({
   const handlePasswordChange = (val: string) => {
     setPassword(val);
     if (touched.password) {
-      const err = validatePassword(val, mode);
+      const err = getPasswordError(val, mode);
       setErrors((prev) => ({ ...prev, password: err || undefined }));
     }
   };
@@ -131,7 +149,7 @@ export function AuthPage({
   const handleDisplayNameChange = (val: string) => {
     setDisplayName(val);
     if (touched.displayName) {
-      const err = validateDisplayName(val);
+      const err = getDisplayNameError(val);
       setErrors((prev) => ({ ...prev, displayName: err || undefined }));
     }
   };
@@ -139,13 +157,13 @@ export function AuthPage({
   const handleBlur = (field: "email" | "password" | "displayName") => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     if (field === "email") {
-      const err = validateEmail(email);
+      const err = getEmailError(email);
       setErrors((prev) => ({ ...prev, email: err || undefined }));
     } else if (field === "password") {
-      const err = validatePassword(password, mode);
+      const err = getPasswordError(password, mode);
       setErrors((prev) => ({ ...prev, password: err || undefined }));
     } else if (field === "displayName") {
-      const err = validateDisplayName(displayName);
+      const err = getDisplayNameError(displayName);
       setErrors((prev) => ({ ...prev, displayName: err || undefined }));
     }
   };
@@ -166,9 +184,9 @@ export function AuthPage({
     if (isSubmitting || auth.isLoading || isGoogleConnecting || isSuccess) return;
 
     setTouched({ displayName: true, email: true, password: true });
-    const nameErr = validateDisplayName(displayName);
-    const emailErr = validateEmail(email);
-    const passwordErr = validatePassword(password, "register");
+    const nameErr = getDisplayNameError(displayName);
+    const emailErr = getEmailError(email);
+    const passwordErr = getPasswordError(password, "register");
 
     if (nameErr || emailErr || passwordErr) {
       setErrors({
@@ -204,8 +222,8 @@ export function AuthPage({
     if (isSubmitting || auth.isLoading || isGoogleConnecting || isSuccess) return;
 
     setTouched({ email: true, password: true });
-    const emailErr = validateEmail(email);
-    const passwordErr = validatePassword(password, "login");
+    const emailErr = getEmailError(email);
+    const passwordErr = getPasswordError(password, "login");
 
     if (emailErr || passwordErr) {
       setErrors({
@@ -242,18 +260,49 @@ export function AuthPage({
       className="page-container auth-page-card"
       style={{ maxWidth: "380px", textAlign: "left", marginTop: "60px" }}
     >
-      {onBackToLanding && (
-        <button
-          type="button"
-          onClick={onBackToLanding}
-          className="auth-back-link"
-          aria-label="Back to VIRA Overview"
+      {isEasyMode ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
         >
-          <span className="auth-back-arrow" aria-hidden="true">
-            &larr;
-          </span>
-          <span>Back to VIRA Overview</span>
-        </button>
+          {onBackToLanding ? (
+            <button
+              type="button"
+              onClick={onBackToLanding}
+              className="auth-back-link"
+              style={{ margin: 0 }}
+              aria-label={t("authBackLink")}
+            >
+              <span className="auth-back-arrow" aria-hidden="true">
+                &larr;
+              </span>
+              <span>{t("authBackLink")}</span>
+            </button>
+          ) : (
+            <div />
+          )}
+          <EasyModeNavToggle />
+        </div>
+      ) : (
+        onBackToLanding && (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="auth-back-link"
+            aria-label="Back to VIRA Overview"
+          >
+            <span className="auth-back-arrow" aria-hidden="true">
+              &larr;
+            </span>
+            <span>Back to VIRA Overview</span>
+          </button>
+        )
       )}
 
       <h1 className="brand-logo-text" style={{ fontSize: "24px", marginBottom: "6px" }}>
@@ -267,7 +316,7 @@ export function AuthPage({
           lineHeight: 1.4,
         }}
       >
-        Real-time voice integrity and speaker authentication.
+        {isEasyMode ? t("authSubtitle") : "Real-time voice integrity and speaker authentication."}
       </p>
 
       {/* Google Sign In */}
@@ -276,23 +325,31 @@ export function AuthPage({
         className="google-btn"
         onClick={handleGoogleSignIn}
         disabled={isFormBusy}
-        aria-label={isGoogleConnecting ? "Connecting to Google..." : "Continue with Google"}
+        aria-label={
+          isGoogleConnecting
+            ? isEasyMode
+              ? t("connectingGoogle")
+              : "Connecting to Google..."
+            : isEasyMode
+              ? t("continueWithGoogle")
+              : "Continue with Google"
+        }
       >
         {isGoogleConnecting ? (
           <>
             <span className="auth-spinner dark" aria-hidden="true" />
-            <span>Connecting to Google...</span>
+            <span>{isEasyMode ? t("connectingGoogle") : "Connecting to Google..."}</span>
           </>
         ) : (
           <>
             <GoogleIcon />
-            <span>Continue with Google</span>
+            <span>{isEasyMode ? t("continueWithGoogle") : "Continue with Google"}</span>
           </>
         )}
       </button>
 
       <div className="auth-divider">
-        <span>or</span>
+        <span>{isEasyMode ? t("orDivider") : "or"}</span>
       </div>
 
       {/* Auth Tabs */}
@@ -304,7 +361,7 @@ export function AuthPage({
           role="tab"
           aria-selected={mode === "login"}
         >
-          <span>Sign In</span>
+          <span>{isEasyMode ? t("authSignInTab") : "Sign In"}</span>
           {mode === "login" && (
             <motion.div
               className="auth-tab-underline"
@@ -320,7 +377,7 @@ export function AuthPage({
           role="tab"
           aria-selected={mode === "register"}
         >
-          <span>Register</span>
+          <span>{isEasyMode ? t("authRegisterTab") : "Register"}</span>
           {mode === "register" && (
             <motion.div
               className="auth-tab-underline"
@@ -357,17 +414,21 @@ export function AuthPage({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <div className="auth-success-title">Authentication successful</div>
-          <div className="auth-success-desc">Entering VIRA...</div>
+          <div className="auth-success-title">
+            {isEasyMode ? t("authSuccessTitle") : "Authentication successful"}
+          </div>
+          <div className="auth-success-desc">
+            {isEasyMode ? t("authSuccessDesc") : "Entering VIRA..."}
+          </div>
         </div>
       ) : mode === "login" ? (
         <form onSubmit={handleLogin} className="auth-form" noValidate>
           <div>
-            <label htmlFor="login-email">Email</label>
+            <label htmlFor="login-email">{isEasyMode ? t("authEmailLabel") : "Email"}</label>
             <input
               id="login-email"
               type="email"
-              placeholder="name@example.com"
+              placeholder={isEasyMode ? t("authEmailPlaceholder") : "name@example.com"}
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
               onBlur={() => handleBlur("email")}
@@ -385,7 +446,7 @@ export function AuthPage({
             )}
           </div>
           <div>
-            <label htmlFor="login-password">Password</label>
+            <label htmlFor="login-password">{isEasyMode ? t("authPasswordLabel") : "Password"}</label>
             <div className="auth-password-wrapper">
               <input
                 id="login-password"
@@ -404,7 +465,15 @@ export function AuthPage({
                 type="button"
                 className="auth-password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={
+                  showPassword
+                    ? isEasyMode
+                      ? t("authHidePassword")
+                      : "Hide password"
+                    : isEasyMode
+                      ? t("authShowPassword")
+                      : "Show password"
+                }
                 tabIndex={0}
                 disabled={isFormBusy}
               >
@@ -426,21 +495,42 @@ export function AuthPage({
             {isSubmitting ? (
               <>
                 <span className="auth-spinner" aria-hidden="true" />
-                <span>Signing in...</span>
+                <span>{isEasyMode ? t("authSigningInBtn") : "Signing in..."}</span>
               </>
             ) : (
-              "Sign In"
+              isEasyMode ? t("authSignInBtn") : "Sign In"
             )}
           </button>
+          {isEasyMode && (
+            <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px", color: "var(--text-secondary)" }}>
+              <span>{t("authDontHaveAccount")} </span>
+              <button
+                type="button"
+                onClick={() => switchMode("register")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent-primary, #ffffff)",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  padding: 0,
+                  font: "inherit",
+                  fontWeight: 600,
+                }}
+              >
+                {t("authCreateAccountBtn")}
+              </button>
+            </div>
+          )}
         </form>
       ) : (
         <form onSubmit={handleRegister} className="auth-form" noValidate>
           <div>
-            <label htmlFor="reg-name">Display Name</label>
+            <label htmlFor="reg-name">{isEasyMode ? t("authDisplayNameLabel") : "Display Name"}</label>
             <input
               id="reg-name"
               type="text"
-              placeholder="Your name"
+              placeholder={isEasyMode ? t("authDisplayNamePlaceholder") : "Your name"}
               value={displayName}
               onChange={(e) => handleDisplayNameChange(e.target.value)}
               onBlur={() => handleBlur("displayName")}
@@ -458,11 +548,11 @@ export function AuthPage({
             )}
           </div>
           <div>
-            <label htmlFor="reg-email">Email</label>
+            <label htmlFor="reg-email">{isEasyMode ? t("authEmailLabel") : "Email"}</label>
             <input
               id="reg-email"
               type="email"
-              placeholder="name@example.com"
+              placeholder={isEasyMode ? t("authEmailPlaceholder") : "name@example.com"}
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
               onBlur={() => handleBlur("email")}
@@ -479,12 +569,12 @@ export function AuthPage({
             )}
           </div>
           <div>
-            <label htmlFor="reg-password">Password</label>
+            <label htmlFor="reg-password">{isEasyMode ? t("authPasswordLabel") : "Password"}</label>
             <div className="auth-password-wrapper">
               <input
                 id="reg-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Minimum 8 characters"
+                placeholder={isEasyMode ? t("authPasswordPlaceholderRegister") : "Minimum 8 characters"}
                 value={password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 onBlur={() => handleBlur("password")}
@@ -499,7 +589,15 @@ export function AuthPage({
                 type="button"
                 className="auth-password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={
+                  showPassword
+                    ? isEasyMode
+                      ? t("authHidePassword")
+                      : "Hide password"
+                    : isEasyMode
+                      ? t("authShowPassword")
+                      : "Show password"
+                }
                 tabIndex={0}
                 disabled={isFormBusy}
               >
@@ -521,12 +619,33 @@ export function AuthPage({
             {isSubmitting ? (
               <>
                 <span className="auth-spinner" aria-hidden="true" />
-                <span>Creating account...</span>
+                <span>{isEasyMode ? t("authCreatingAccountBtn") : "Creating account..."}</span>
               </>
             ) : (
-              "Create Account"
+              isEasyMode ? t("authCreateAccountBtn") : "Create Account"
             )}
           </button>
+          {isEasyMode && (
+            <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px", color: "var(--text-secondary)" }}>
+              <span>{t("authAlreadyHaveAccount")} </span>
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent-primary, #ffffff)",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  padding: 0,
+                  font: "inherit",
+                  fontWeight: 600,
+                }}
+              >
+                {t("authSignInBtn")}
+              </button>
+            </div>
+          )}
         </form>
       )}
     </div>

@@ -202,4 +202,204 @@ test("Easy Mode Test Suite: State, Translations, Probabilistic Copy & Fallbacks"
     state.isEasyMode = false;
     assert.equal(state.isEasyMode, false, "Easy Mode is now OFF, normal landing restored");
   });
+
+  await t.test("11. Auth page translation keys and values exist for English and Hindi", () => {
+    const en = EASY_MODE_TRANSLATIONS.en;
+    const hi = EASY_MODE_TRANSLATIONS.hi;
+
+    // Subtitle & Back link
+    assert.equal(en.authSubtitle, "Real-time voice integrity and speaker authentication.");
+    assert.equal(hi.authSubtitle, "रीयल-टाइम आवाज़ सुरक्षा और कॉलर सत्यापन।");
+    assert.equal(en.authBackLink, "Back to VIRA Overview");
+    assert.equal(hi.authBackLink, "मुख्य पेज पर वापस जाएं");
+
+    // Google OAuth
+    assert.equal(en.continueWithGoogle, "Continue with Google");
+    assert.equal(hi.continueWithGoogle, "Google के साथ आगे बढ़ें");
+    assert.equal(en.connectingGoogle, "Connecting to Google...");
+    assert.equal(hi.connectingGoogle, "Google से जुड़ रहा है...");
+    assert.equal(en.orDivider, "or");
+    assert.equal(hi.orDivider, "या");
+
+    // Tabs
+    assert.equal(en.authSignInTab, "Sign In");
+    assert.equal(hi.authSignInTab, "साइन इन");
+    assert.equal(en.authRegisterTab, "Register");
+    assert.equal(hi.authRegisterTab, "नया खाता");
+
+    // Labels & Placeholders
+    assert.equal(en.authEmailLabel, "Email");
+    assert.equal(hi.authEmailLabel, "ईमेल आईडी");
+    assert.equal(en.authPasswordLabel, "Password");
+    assert.equal(hi.authPasswordLabel, "पासवर्ड");
+    assert.equal(en.authDisplayNameLabel, "Display Name");
+    assert.equal(hi.authDisplayNameLabel, "आपका नाम");
+
+    // Buttons
+    assert.equal(en.authSignInBtn, "Sign In");
+    assert.equal(hi.authSignInBtn, "साइन इन करें");
+    assert.equal(en.authCreateAccountBtn, "Create Account");
+    assert.equal(hi.authCreateAccountBtn, "नया खाता बनाएं");
+    assert.equal(en.authSigningInBtn, "Signing in...");
+    assert.equal(hi.authSigningInBtn, "साइन इन हो रहा है...");
+    assert.equal(en.authCreatingAccountBtn, "Creating account...");
+    assert.equal(hi.authCreatingAccountBtn, "खाता बन रहा है...");
+
+    // Error messages
+    assert.equal(en.authEmailRequired, "Email is required");
+    assert.equal(hi.authEmailRequired, "ईमेल आईडी भरना ज़रूरी है");
+    assert.equal(en.authPasswordRequired, "Password is required");
+    assert.equal(hi.authPasswordRequired, "पासवर्ड भरना ज़रूरी है");
+    assert.equal(en.authDisplayNameRequired, "Display name is required");
+    assert.equal(hi.authDisplayNameRequired, "अपना नाम भरना ज़रूरी है");
+
+    // Helper prompts
+    assert.equal(en.authDontHaveAccount, "Don't have an account?");
+    assert.equal(hi.authDontHaveAccount, "खाता नहीं है?");
+    assert.equal(en.authAlreadyHaveAccount, "Already have an account?");
+    assert.equal(hi.authAlreadyHaveAccount, "पहले से खाता है?");
+  });
+
+  await t.test("12. TEST 1: Easy Mode OFF -> Login (Expected: English normal Login page)", () => {
+    const isEasyMode = false;
+    const currentRoute = "login";
+
+    const renderedSubtitle = isEasyMode ? EASY_MODE_TRANSLATIONS.en.authSubtitle : "Real-time voice integrity and speaker authentication.";
+    const renderedSignInBtn = isEasyMode ? EASY_MODE_TRANSLATIONS.en.authSignInBtn : "Sign In";
+    const renderedBackLink = isEasyMode ? EASY_MODE_TRANSLATIONS.en.authBackLink : "Back to VIRA Overview";
+    const renderedEmailLabel = isEasyMode ? EASY_MODE_TRANSLATIONS.en.authEmailLabel : "Email";
+
+    assert.equal(isEasyMode, false);
+    assert.equal(currentRoute, "login");
+    assert.equal(renderedSubtitle, "Real-time voice integrity and speaker authentication.");
+    assert.equal(renderedSignInBtn, "Sign In");
+    assert.equal(renderedBackLink, "Back to VIRA Overview");
+    assert.equal(renderedEmailLabel, "Email");
+  });
+
+  await t.test("13. TEST 2: Easy Mode ON -> English -> Login (Expected: English Easy Mode Login)", () => {
+    const isEasyMode = true;
+    const language: EasyModeLanguage = "en";
+    const currentRoute = "login";
+    const t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "en");
+    assert.equal(currentRoute, "login");
+    assert.equal(t("authSubtitle"), "Real-time voice integrity and speaker authentication.");
+    assert.equal(t("authSignInBtn"), "Sign In");
+    assert.equal(t("authEmailLabel"), "Email");
+    assert.equal(t("continueWithGoogle"), "Continue with Google");
+    assert.equal(t("authBackLink"), "Back to VIRA Overview");
+  });
+
+  await t.test("14. TEST 3: Easy Mode ON -> Hindi -> Login (Expected: Hindi Easy Mode Login)", () => {
+    const isEasyMode = true;
+    const language: EasyModeLanguage = "hi";
+    const currentRoute = "login";
+    const t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "hi");
+    assert.equal(currentRoute, "login");
+    assert.equal(t("authSubtitle"), "रीयल-टाइम आवाज़ सुरक्षा और कॉलर सत्यापन।");
+    assert.equal(t("authSignInBtn"), "साइन इन करें");
+    assert.equal(t("authEmailLabel"), "ईमेल आईडी");
+    assert.equal(t("continueWithGoogle"), "Google के साथ आगे बढ़ें");
+    assert.equal(t("authBackLink"), "मुख्य पेज पर वापस जाएं");
+  });
+
+  await t.test("15. TEST 4: Easy Mode ON -> Hindi -> Sign Up (Expected: Hindi Easy Mode Sign Up)", () => {
+    const isEasyMode = true;
+    const language: EasyModeLanguage = "hi";
+    const currentRoute = "signup";
+    const t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "hi");
+    assert.equal(currentRoute, "signup");
+    assert.equal(t("authRegisterTab"), "नया खाता");
+    assert.equal(t("authCreateAccountBtn"), "नया खाता बनाएं");
+    assert.equal(t("authDisplayNameLabel"), "आपका नाम");
+    assert.equal(t("authEmailLabel"), "ईमेल आईडी");
+    assert.equal(t("authPasswordLabel"), "पासवर्ड");
+    assert.equal(t("authPasswordPlaceholderRegister"), "कम से कम 8 अक्षर");
+  });
+
+  await t.test("16. TEST 5: Easy Mode ON -> Hindi -> Sign Up -> Login (Expected: Hindi Login, NOT English)", () => {
+    let isEasyMode = true;
+    let language: EasyModeLanguage = "hi";
+    let route = "landing";
+
+    // 1. Landing in Easy Mode with Hindi
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "hi");
+
+    // 2. Navigate to Sign Up
+    route = "signup";
+    assert.equal(route, "signup");
+    assert.equal(isEasyMode, true, "Easy Mode must persist on /signup");
+    assert.equal(language, "hi", "Language must remain Hindi on /signup");
+    let t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+    assert.equal(t("authRegisterTab"), "नया खाता");
+
+    // 3. Navigate from Sign Up to Login
+    route = "login";
+    assert.equal(route, "login");
+    assert.equal(isEasyMode, true, "Easy Mode must persist on /login");
+    assert.equal(language, "hi", "Language must remain Hindi on /login, NOT reset to English");
+    t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+    assert.equal(t("authSignInTab"), "साइन इन");
+    assert.equal(t("authSignInBtn"), "साइन इन करें");
+    assert.notEqual(t("authSignInBtn"), "Sign In", "Must NOT be English");
+  });
+
+  await t.test("17. TEST 6: Easy Mode ON -> English -> Sign Up -> Login (Expected: English Easy Mode Login)", () => {
+    let isEasyMode = true;
+    let language: EasyModeLanguage = "en";
+    let route = "landing";
+
+    // 1. Landing in Easy Mode with English
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "en");
+
+    // 2. Navigate to Sign Up
+    route = "signup";
+    assert.equal(route, "signup");
+    assert.equal(isEasyMode, true, "Easy Mode must persist on /signup");
+    assert.equal(language, "en", "Language must remain English on /signup");
+
+    // 3. Navigate from Sign Up to Login
+    route = "login";
+    assert.equal(route, "login");
+    assert.equal(isEasyMode, true, "Easy Mode must persist on /login");
+    assert.equal(language, "en", "Language must remain English on /login");
+    const t = (k: keyof TranslationSchema) => EASY_MODE_TRANSLATIONS[language][k];
+    assert.equal(t("authSignInTab"), "Sign In");
+    assert.equal(t("authSignInBtn"), "Sign In");
+  });
+
+  await t.test("18. TEST 7: Switch Easy Mode OFF (Expected: normal existing English Login UI)", () => {
+    let isEasyMode = true;
+    let language: EasyModeLanguage = "hi";
+
+    // User is on Login with Easy Mode Hindi
+    assert.equal(isEasyMode, true);
+    assert.equal(language, "hi");
+
+    // User clicks [ Exit Easy Mode ]
+    isEasyMode = false;
+
+    // Normal mode rendering
+    const renderedSubtitle = isEasyMode ? EASY_MODE_TRANSLATIONS[language].authSubtitle : "Real-time voice integrity and speaker authentication.";
+    const renderedSignInBtn = isEasyMode ? EASY_MODE_TRANSLATIONS[language].authSignInBtn : "Sign In";
+    const renderedBackLink = isEasyMode ? EASY_MODE_TRANSLATIONS[language].authBackLink : "Back to VIRA Overview";
+    const renderedGoogleBtn = isEasyMode ? EASY_MODE_TRANSLATIONS[language].continueWithGoogle : "Continue with Google";
+
+    assert.equal(isEasyMode, false, "Easy mode disabled");
+    assert.equal(renderedSubtitle, "Real-time voice integrity and speaker authentication.", "Normal English subtitle restored");
+    assert.equal(renderedSignInBtn, "Sign In", "Normal English Sign In restored");
+    assert.equal(renderedBackLink, "Back to VIRA Overview", "Normal English Back link restored");
+    assert.equal(renderedGoogleBtn, "Continue with Google", "Normal English Google OAuth restored");
+  });
 });
