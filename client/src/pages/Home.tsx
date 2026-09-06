@@ -18,9 +18,10 @@ import { EasyModeListenButton } from "../components/EasyModeListenButton";
 interface HomeProps {
   auth: UseAuthResult;
   onBackToLanding?: () => void;
+  onLogout?: () => void;
 }
 
-export function Home({ auth, onBackToLanding }: HomeProps) {
+export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
   const {
     self,
     users,
@@ -159,7 +160,10 @@ export function Home({ auth, onBackToLanding }: HomeProps) {
 
           <button
             className="nav-btn-logout"
-            onClick={auth.signOut}
+            onClick={async () => {
+              await auth.signOut();
+              onLogout?.();
+            }}
             title="Log out"
           >
             Log Out

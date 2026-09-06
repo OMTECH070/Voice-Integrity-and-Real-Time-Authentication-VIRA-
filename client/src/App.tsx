@@ -144,6 +144,13 @@ function AppContent() {
     }
   }, [auth.user, currentRoute, authSuccessPending, navigateToApp]);
 
+  // When user logs out while on protected /app route, transition SPA route to /login
+  useEffect(() => {
+    if (!auth.isLoading && !auth.user && currentRoute === "app") {
+      navigateToLogin();
+    }
+  }, [auth.isLoading, auth.user, currentRoute, navigateToLogin]);
+
   // 1. Landing Page route (at '/')
   if (currentRoute === "landing") {
     return (
@@ -162,7 +169,7 @@ function AppContent() {
       if (auth.needsUsername) {
         return <ClaimUsername auth={auth} />;
       }
-      return <Home auth={auth} onBackToLanding={navigateToLanding} />;
+      return <Home auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
     }
     return (
       <AuthPage
@@ -241,7 +248,7 @@ function AppContent() {
     return <ClaimUsername auth={auth} />;
   }
 
-  return <Home auth={auth} onBackToLanding={navigateToLanding} />;
+  return <Home auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
 }
 
 export default function App() {
