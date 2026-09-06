@@ -8,7 +8,6 @@ import { SecurityIndicator, SecurityState } from "./SecurityIndicator";
 import { useEasyMode } from "../context/EasyModeContext";
 import { EasyModeCallScreen } from "./EasyModeCallScreen";
 import type { SpeechSegment } from "../audio/vad/types";
-import { setNativeSpeakerEnabled, resetNativeAudioMode } from "../services/nativeAudioRouting";
 
 interface ActiveCallScreenProps {
   activeCall: ActiveCallInfo;
@@ -66,15 +65,6 @@ export function ActiveCallScreen({
     onLocalSpeechFrame: analysis.handleLocalSpeechFrame,
   });
 
-  // Manage audio routing lifecycle: enter communication mode on connect, reset on end/unmount
-  useEffect(() => {
-    if (callState === "CONNECTED") {
-      void setNativeSpeakerEnabled(speakerEnabled, audioRef.current);
-    }
-    return () => {
-      void resetNativeAudioMode();
-    };
-  }, [callState]);
   // Ensure remote audio playback is attached and audible
   useEffect(() => {
     if (audioRef.current && remoteStream) {
@@ -83,17 +73,8 @@ export function ActiveCallScreen({
       audioRef.current.play().catch((err) => {
         console.warn("[VIRA][AUDIO] Remote audio autoplay error:", err);
       });
-      void setNativeSpeakerEnabled(speakerEnabled, audioRef.current);
     }
   }, [remoteStream]);
-
-  const toggleSpeaker = () => {
-    setSpeakerEnabled((prev) => {
-      const next = !prev;
-      void setNativeSpeakerEnabled(next, audioRef.current);
-      return next;
-    });
-  };
 
   // Derive security state for indicator
   let securityState: SecurityState = "idle";
@@ -239,32 +220,19 @@ export function ActiveCallScreen({
       {/* Call Controls */}
       <div className="call-controls-row-minimal" role="toolbar" aria-label="Call controls">
         {callState === "CONNECTED" && (
-          <>
-            <button
-              className={`btn-call-action-minimal btn-call-mute ${isMuted ? "muted" : ""}`}
-              onClick={onToggleMute}
-              aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-            >
-              {isMuted ? "Unmute" : localVAD.isSpeaking ? "Speaking..." : "Mute"}
-            </button>
-
-            <button
-              className="btn-call-action-minimal btn-call-mute"
-              onClick={toggleSpeaker}
-              aria-label={speakerEnabled ? "Speaker On" : "Speaker Off"}
-            >
-              {speakerEnabled ? "Speaker On" : "Speaker Off"}
-            </button>
-          </>
+          <button
+            className={`btn-call-action-minimal btn-call-mute ${isMuted ? "muted" : ""}`}
+            onClick={onToggleMute}
+            aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+          >
+            {isMuted ? "Unmute" : localVAD.isSpeaking ? "Speaking..." : "Mute"}
+          </button>
         )}
 
         {canEndOrCancel && (
           <button
             className="btn-call-action-minimal btn-call-end"
-            onClick={() => {
-              void resetNativeAudioMode();
-              onEndCall();
-            }}
+            onClick={onEndCall}
             aria-label="End call"
           >
             End Call
