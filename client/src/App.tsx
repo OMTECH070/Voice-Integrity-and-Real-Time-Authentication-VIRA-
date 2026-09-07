@@ -4,9 +4,11 @@ import { AuthPage } from "./pages/AuthPage";
 import { ClaimUsername } from "./pages/ClaimUsername";
 import { Home } from "./pages/Home";
 import { LandingPage } from "./pages/LandingPage";
+import { LaunchingSoon } from "./pages/LaunchingSoon";
 import { AdminDatasetView } from "./components/AdminDatasetView";
 import { EasyModeProvider } from "./context/EasyModeContext";
 import { EasyModeLanguageModal } from "./components/EasyModeLanguageModal";
+import { ViraAppSkeleton } from "./components/ViraAppSkeleton";
 import "./App.css";
 
 type Route = "landing" | "login" | "signup" | "app" | "admin-dataset";
@@ -144,6 +146,13 @@ function AppContent() {
     }
   }, [auth.user, currentRoute, authSuccessPending, navigateToApp]);
 
+  // When user logs out while on protected /app route, transition SPA route to /login
+  useEffect(() => {
+    if (!auth.isLoading && !auth.user && currentRoute === "app") {
+      navigateToLogin();
+    }
+  }, [auth.isLoading, auth.user, currentRoute, navigateToLogin]);
+
   // 1. Landing Page route (at '/')
   if (currentRoute === "landing") {
     return (
@@ -158,11 +167,17 @@ function AppContent() {
 
   // 2. Explicit Login Route ('/login') & Sign Up Route ('/signup')
   if (currentRoute === "login" || currentRoute === "signup") {
+    if (auth.isLoading) {
+      return <ViraAppSkeleton message="Authenticating secure session..." />;
+    }
     if (auth.user && !authSuccessPending) {
       if (auth.needsUsername) {
         return <ClaimUsername auth={auth} />;
       }
-      return <Home auth={auth} onBackToLanding={navigateToLanding} />;
+      if (auth.user.role === "admin") {
+        return <Home auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
+      }
+      return <LaunchingSoon auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
     }
     return (
       <AuthPage
@@ -181,15 +196,7 @@ function AppContent() {
   // 3. Protected Admin Dataset route (at '/admin/dataset')
   if (currentRoute === "admin-dataset") {
     if (auth.isLoading) {
-      return (
-        <div className="page-container" style={{ textAlign: "center", marginTop: "100px" }}>
-          <h1 className="brand-logo-text" style={{ fontSize: "24px", marginBottom: "8px" }}>VIRA</h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 20px 0" }}>
-            Verifying reviewer credentials...
-          </p>
-          <div className="cyber-spinner" />
-        </div>
-      );
+      return <ViraAppSkeleton message="Verifying reviewer credentials..." />;
     }
     if (!auth.user || authSuccessPending) {
       return (
@@ -205,20 +212,15 @@ function AppContent() {
         />
       );
     }
+    if (auth.user.role !== "admin") {
+      return <LaunchingSoon auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
+    }
     return <AdminDatasetView auth={auth} onBack={navigateToApp} />;
   }
 
-  // 3. Application route (at '/app')
+  // 4. Application route (at '/app')
   if (auth.isLoading) {
-    return (
-      <div className="page-container" style={{ textAlign: "center", marginTop: "100px" }}>
-        <h1 className="brand-logo-text" style={{ fontSize: "24px", marginBottom: "8px" }}>VIRA</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "14px", margin: "0 0 20px 0" }}>
-          Authenticating secure session...
-        </p>
-        <div className="cyber-spinner" />
-      </div>
-    );
+    return <ViraAppSkeleton message="Authenticating secure session..." />;
   }
 
   // Protected route: unauthenticated user trying to access /app is shown AuthPage
@@ -241,7 +243,12 @@ function AppContent() {
     return <ClaimUsername auth={auth} />;
   }
 
-  return <Home auth={auth} onBackToLanding={navigateToLanding} />;
+  // Role Gate: Admin receives full application, normal user receives Launching Soon
+  if (auth.user.role === "admin") {
+    return <Home auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
+  }
+
+  return <LaunchingSoon auth={auth} onBackToLanding={navigateToLanding} onLogout={navigateToLogin} />;
 }
 
 export default function App() {
