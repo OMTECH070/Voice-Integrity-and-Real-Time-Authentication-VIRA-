@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "../utils/logger";
 import { XGBoostFeatures } from "./xgboostIntegrity.service";
@@ -100,7 +101,7 @@ export class DatasetService {
     modelVersions?: Record<string, string>;
     metadata?: Record<string, any>;
   }): Promise<DatasetSampleRecord> {
-    const id = `sample-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const id = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
     const ecapaVal =
@@ -315,7 +316,7 @@ export class DatasetService {
       throw new Error(`Sample with id ${sampleId} not found`);
     }
 
-    const reviewId = `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const reviewId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
     const review: DatasetReviewRecord = {
