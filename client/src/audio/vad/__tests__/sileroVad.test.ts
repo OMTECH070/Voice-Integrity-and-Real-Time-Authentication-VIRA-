@@ -323,9 +323,9 @@ async function runTests() {
   }
 
   // -------------------------------------------------------------------------
-  // TEST 8: Production build verification
+  // TEST 8: Production build verification & AudioWorklet packaging
   // -------------------------------------------------------------------------
-  console.log("\nTEST 8: Production build verification");
+  console.log("\nTEST 8: Production build verification & AudioWorklet packaging");
   {
     const distHtml = findExistingFile([
       path.resolve("dist/index.html"),
@@ -343,6 +343,24 @@ async function runTests() {
     if (fs.existsSync(distModel)) {
       const stats = fs.statSync(distModel);
       assert(stats.size === 2327524, `Bundled model matches genuine Silero VAD v5 byte size (${stats.size} bytes)`);
+    }
+
+    // AudioWorklet production packaging regression check
+    const assetsDir = path.join(path.dirname(distHtml), "assets");
+    if (fs.existsSync(assetsDir)) {
+      const assetFiles = fs.readdirSync(assetsDir);
+      const rawTsWorklet = assetFiles.find((f) => f.includes("vadProcessor.worklet") && f.endsWith(".ts"));
+      const compiledJsWorklet = assetFiles.find((f) => f.includes("vadProcessor.worklet") && f.endsWith(".js"));
+
+      assert(!rawTsWorklet, "Production build must NOT emit raw TypeScript vadProcessor.worklet.ts");
+      assert(!!compiledJsWorklet, "Production build MUST emit bundled JavaScript vadProcessor.worklet-*.js");
+
+      if (compiledJsWorklet) {
+        const workletCode = fs.readFileSync(path.join(assetsDir, compiledJsWorklet), "utf-8");
+        assert(workletCode.includes('registerProcessor("vad-processor"'), "Worklet JS registers vad-processor");
+        assert(!workletCode.includes("import type"), "Worklet JS contains no 'import type' statements");
+        assert(!workletCode.includes('"./vadCore"'), "Worklet JS contains no unbundled relative './vadCore' imports");
+      }
     }
   }
 

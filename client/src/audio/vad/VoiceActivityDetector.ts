@@ -5,6 +5,8 @@ import { SileroVadBackend } from "./sileroVadBackend";
 import { AdaptiveVadStateMachine } from "./vadCore";
 import { SpeechAudioGate } from "./speechAudioGate";
 
+import vadWorkletUrl from "./vadProcessor.worklet.ts?worker&url";
+
 export type VADState = "idle" | "starting" | "running" | "stopped" | "error";
 
 /**
@@ -104,8 +106,7 @@ export class VoiceActivityDetector {
         preRollFrames: Math.round(300 / 32),
       });
 
-      const workletUrl = new URL("./vadProcessor.worklet.ts", import.meta.url);
-      await this.audioContext.audioWorklet.addModule(workletUrl);
+      await this.audioContext.audioWorklet.addModule(vadWorkletUrl);
 
       this.workletNode = new AudioWorkletNode(this.audioContext, "vad-processor");
       this.workletNode.port.onmessage = async (event: MessageEvent<WorkletOutboundMessage>) => {
