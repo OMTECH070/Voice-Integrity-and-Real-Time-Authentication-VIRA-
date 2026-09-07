@@ -89,19 +89,44 @@ export function AuthPage({
   const [isGoogleConnecting, setIsGoogleConnecting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [signupConfirmationRequired, setSignupConfirmationRequired] =
+    useState(false);
 
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const [touched, setTouched] = useState<{ email?: boolean; password?: boolean; displayName?: boolean }>({});
 
   const switchMode = (newMode: "login" | "register") => {
-    if (newMode === mode) return;
+    if (newMode === mode) {
+      setErrors({});
+      setTouched({});
+      setSignupConfirmationRequired(false);
+      setIsSuccess(false);
+
+      if (auth.error) {
+        auth.dismissError();
+      }
+
+      return;
+    }
+
     setMode(newMode);
+
     setErrors({});
     setTouched({});
     setShowPassword(false);
-    if (auth.error) auth.dismissError();
+    setSignupConfirmationRequired(false);
+    setIsSuccess(false);
+
+    if (auth.error) {
+      auth.dismissError();
+    }
+
     try {
-      window.history.replaceState(null, "", newMode === "register" ? "/signup" : "/login");
+      window.history.replaceState(
+        null,
+        "",
+        newMode === "register" ? "/signup" : "/login"
+      );
     } catch {
       // Ignore
     }
@@ -198,10 +223,12 @@ export function AuthPage({
     }
 
     if (auth.error) auth.dismissError();
+    setSignupConfirmationRequired(false);
     setIsSubmitting(true);
     try {
-      const success = await auth.signUpWithEmail(email, password, displayName);
-      if (success) {
+      const result = await auth.signUpWithEmail(email, password, displayName);
+      if (result === "success") {
+        // Immediate authenticated signup.
         setIsSuccess(true);
         onAuthSuccessStart?.();
         setTimeout(() => {
@@ -211,6 +238,10 @@ export function AuthPage({
             window.location.href = "/app";
           }
         }, 750);
+      } else if (result === "confirmation_required") {
+        // Account created, but email confirmation is required.
+        setSignupConfirmationRequired(true);
+        setIsSuccess(true);
       }
     } finally {
       setIsSubmitting(false);
@@ -415,10 +446,22 @@ export function AuthPage({
             </svg>
           </div>
           <div className="auth-success-title">
-            {isEasyMode ? t("authSuccessTitle") : "Authentication successful"}
+            {signupConfirmationRequired
+              ? isEasyMode
+                ? "खाता बन गया"
+                : "Account created"
+              : isEasyMode
+                ? t("authSuccessTitle")
+                : "Authentication successful"}
           </div>
           <div className="auth-success-desc">
-            {isEasyMode ? t("authSuccessDesc") : "Entering VIRA..."}
+            {signupConfirmationRequired
+              ? isEasyMode
+                ? "कृपया अपना ईमेल चेक करें और अपना खाता सत्यापित करें।"
+                : "Please check your email and confirm your account before signing in."
+              : isEasyMode
+                ? t("authSuccessDesc")
+                : "Entering VIRA..."}
           </div>
         </div>
       ) : mode === "login" ? (

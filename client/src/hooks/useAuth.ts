@@ -2,16 +2,22 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../services/supabaseClient";
 import { PublicUserProfile } from "../types/profile";
 
+export type SignUpResult =
+  | "success"
+  | "confirmation_required"
+  | "error";
+
 export interface UseAuthResult {
   user: PublicUserProfile | null;
   isLoading: boolean;
   error: string | null;
-  /** True once logged in but the user hasn't set a username yet
-   * (always true right after Google sign-in, since Google doesn't
-   * provide one). The app should show the username-setup step
-   * before anything else while this is true. */
+  signupConfirmationRequired: boolean;
   needsUsername: boolean;
-  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<boolean>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    displayName: string
+  ) => Promise<SignUpResult>;
   signInWithEmail: (email: string, password: string) => Promise<boolean>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -51,6 +57,8 @@ export function useAuth(): UseAuthResult {
   const [user, setUser] = useState<PublicUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signupConfirmationRequired, setSignupConfirmationRequired] =
+    useState(false);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error: fetchError } = await supabase
@@ -108,38 +116,46 @@ export function useAuth(): UseAuthResult {
   }, [loadProfile]);
 
   const signUpWithEmail = useCallback(
-    async (email: string, password: string, displayName: string) => {
+    async (
+      email: string,
+      password: string,
+      displayName: string
+    ): Promise<SignUpResult> => {
       setError(null);
+      setSignupConfirmationRequired(false);
+
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
-        options: { data: { full_name: displayName } },
+        options: {
+          data: {
+            full_name: displayName.trim(),
+          },
+        },
       });
 
       if (signUpError) {
         setError(signUpError.message);
-        return false;
+        return "error";
       }
 
-      // Supabase deliberately returns a look-alike success response when
-      // the email is already registered (anti-enumeration protection):
-      // no error, but `identities` comes back empty and no session is
-      // issued. A genuine brand-new signup pending email confirmation
-      // ALSO has no session yet. We show the exact same neutral message
-      // for both cases below — the UI must not distinguish "already
-      // registered" from "check your email to confirm" or it defeats
-      // the protection. We also must not call loadProfile() here: the
-      // fake response's user.id doesn't correspond to any real profile
-      // row, and would otherwise surface a raw database error.
       if (!data.session) {
-        setError(
-          "Check your email to finish setting up your account, or log in if you already have one."
-        );
-        return false;
+        // Do NOT inspect data.user.identities here.
+        //
+        // Supabase may intentionally return an obfuscated
+        // user for an existing email.
+        //
+        // For this UI flow, no error + no session means
+        // email confirmation is required.
+        setSignupConfirmationRequired(true);
+        return "confirmation_required";
       }
 
-      if (data.user) await loadProfile(data.user.id);
-      return true;
+      if (data.user) {
+        await loadProfile(data.user.id);
+      }
+
+      return "success";
     },
     [loadProfile]
   );
@@ -176,6 +192,8 @@ export function useAuth(): UseAuthResult {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSignupConfirmationRequired(false);
+    setError(null);
   }, []);
 
   const claimUsername = useCallback(
@@ -224,6 +242,7 @@ export function useAuth(): UseAuthResult {
     user,
     isLoading,
     error,
+    signupConfirmationRequired,
     needsUsername: !!user && !user.username,
     signUpWithEmail,
     signInWithEmail,
