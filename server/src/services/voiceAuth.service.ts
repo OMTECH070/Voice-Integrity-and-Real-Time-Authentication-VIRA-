@@ -291,6 +291,27 @@ export class VoiceAuthService {
       this.enrolledProfiles.set(userId, profile);
       logger.info(`VoiceAuthService: Enrolled voice profile for user ${userId} (${embedding.length}-dim)`);
 
+      if (supabaseAdmin) {
+        try {
+          await (supabaseAdmin as any)
+            .from("voice_profiles")
+            .upsert(
+              {
+                user_id: userId,
+                embedding: Array.from(embedding),
+                sample_duration_seconds: sampleDurationSeconds,
+                model_version: MODEL_VERSION,
+                enrolled_at: nowIso,
+                updated_at: nowIso,
+              },
+              { onConflict: "user_id" }
+            );
+          logger.info(`VoiceAuthService: Persisted enrolled voice profile to database for user ${userId}`);
+        } catch (dbErr) {
+          logger.warn(`VoiceAuthService: Could not persist voice profile to database for user ${userId}: ${dbErr}`);
+        }
+      }
+
       return {
         success: true,
         embedding,

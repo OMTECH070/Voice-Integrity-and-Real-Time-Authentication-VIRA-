@@ -49,6 +49,15 @@ interface CallAnalysisSession {
   lastActiveMs: number;
 }
 
+export interface CallVerificationContext {
+  callId: string;
+  callerUserId: string;
+  calleeUserId: string;
+  /** Enrolled voice profiles cached for the duration of the call: userId -> 192-dim embedding or null */
+  enrolledProfiles: Map<string, Float32Array | null>;
+  lookupCompleted: Set<string>;
+}
+
 export interface VoiceChunkValidationParams {
   callId: string;
   userId: string;
@@ -72,6 +81,50 @@ interface RateLimitTracker {
 
 /** In-memory tracking of active call analysis sessions. Bounded and pruned on call end. */
 const activeAnalysisSessions = new Map<string, CallAnalysisSession>();
+
+/** Call-scoped verification contexts: cached reference embeddings loaded once per call. */
+const activeVerificationContexts = new Map<string, CallVerificationContext>();
+
+export function getCallVerificationContext(callId: string): CallVerificationContext | undefined {
+  return activeVerificationContexts.get(callId);
+}
+
+export async function getOrLoadEnrolledProfileForCall(
+  callId: string,
+  callerId: string,
+  calleeId: string,
+  targetUserId: string
+): Promise<Float32Array | null> {
+  let ctx = activeVerificationContexts.get(callId);
+  if (!ctx) {
+    ctx = {
+      callId,
+      callerUserId: callerId,
+      calleeUserId: calleeId,
+      enrolledProfiles: new Map(),
+      lookupCompleted: new Set(),
+    };
+    activeVerificationContexts.set(callId, ctx);
+  }
+
+  if (ctx.lookupCompleted.has(targetUserId)) {
+    return ctx.enrolledProfiles.get(targetUserId) ?? null;
+  }
+
+  logger.info(`[VIRA][VOICE-ID] enrollment lookup started | callId=${callId} | userId=${targetUserId}`);
+  const profile = await voiceAuthService.getEnrolledProfileAsync(targetUserId);
+
+  if (profile && profile.length > 0) {
+    logger.info(`[VIRA][VOICE-ID] enrollment found | userId=${targetUserId} | dimensions=${profile.length}`);
+    ctx.enrolledProfiles.set(targetUserId, profile);
+  } else {
+    logger.info(`[VIRA][VOICE-ID] no enrollment found | userId=${targetUserId}`);
+    ctx.enrolledProfiles.set(targetUserId, null);
+  }
+
+  ctx.lookupCompleted.add(targetUserId);
+  return profile;
+}
 
 /** Per-socket rate limiter map to prevent chunk flooding / CPU exhaustion. */
 const rateLimits = new Map<string, RateLimitTracker>();
@@ -362,8 +415,14 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
           sampleRate,
         },
         async (result) => {
-          // 1. ECAPA-TDNN Speaker Verification
-          const enrolledProfile = await voiceAuthService.getEnrolledProfileAsync(remoteUserId);
+          // 1. ECAPA-TDNN Speaker Verification (Call-scoped reference profile loaded once per call)
+          const enrolledProfile = await getOrLoadEnrolledProfileForCall(
+            callId,
+            session.callerId,
+            session.calleeId,
+            remoteUserId
+          );
+
           let speakerSimilarity: number | undefined;
           let speakerMatch: boolean | undefined;
           let speakerMatchLabel: "match" | "likely-match" | "mismatch" | "uncertain" | "not-enrolled" | undefined = enrolledProfile
@@ -372,13 +431,20 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
 
           if (enrolledProfile && voiceAuthService.isReady()) {
             try {
+              logger.info(`[VIRA][ECAPA] inference started | callId=${callId} | window=${sequenceNumber}`);
               const currentEmbedding = await voiceAuthService.extractEmbedding(samples, sampleRate);
-              const verification = voiceAuthService.verifySpeaker(enrolledProfile, currentEmbedding);
+              logger.info(`[VIRA][ECAPA] embedding generated | dimensions=${currentEmbedding.length}`);
+              const speechDurationSec = durationMs / 1000.0;
+              const verification = voiceAuthService.verifySpeaker(enrolledProfile, currentEmbedding, speechDurationSec);
               speakerSimilarity = verification.similarity;
               speakerMatch = verification.match;
               speakerMatchLabel = verification.label;
+              logger.info(
+                `[VIRA][ECAPA] similarity=${verification.similarity.toFixed(4)} | match=${verification.match} | label=${verification.label}`
+              );
+              logger.info(`[VIRA][ECAPA] verification result=${verification.decision}`);
             } catch (err) {
-              logger.warn(`Speaker verification failed for remote user ${remoteUserId}: ${err}`);
+              logger.warn(`[VIRA][ECAPA] inference failed for call ${callId}: ${err}`);
             }
           }
 
@@ -546,6 +612,7 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
 /** Clean up analysis session state when a call ends. */
 export function cleanupVoiceAnalysisSession(callId: string): void {
   activeAnalysisSessions.delete(callId);
+  activeVerificationContexts.delete(callId);
   voiceLivenessService.cleanupSession(callId);
   voiceIntegrityService.cleanupSession(callId);
   transcriptionService.clearCallTranscript(callId);

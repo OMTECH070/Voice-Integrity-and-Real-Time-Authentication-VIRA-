@@ -449,16 +449,20 @@ export function VoiceIntegrityBadge({
           <span className="metric-val-mono" style={{ fontSize: "11.5px" }}>{wav2vec2DisplayText}</span>
         </div>
         <div className="metric-col-minimal" style={{ padding: "8px 10px", background: "var(--bg-subtle)", borderRadius: "var(--radius-xs)" }}>
-          <span className="metric-label-mono">Speaker (ECAPA)</span>
+          <span className="metric-label-mono">ECAPA Voice Match</span>
           <span className="metric-val-mono" style={{ fontSize: "11.5px" }}>
             {similarityPercent !== null
-              ? `${similarityPercent}% similarity`
+              ? `${similarityPercent}%`
               : speakerMatchLabel === "not-enrolled"
-              ? "No Voice Profile"
-              : explicitState === "BUFFERING"
-              ? "Buffering..."
-              : explicitState === "ANALYZING"
-              ? "Analyzing..."
+              ? "Voice ID not set up"
+              : integrityStatus === "analysis-unavailable"
+              ? "Unable to verify"
+              : explicitState === "BUFFERING" || explicitState === "ANALYZING"
+              ? "Checking..."
+              : speakerMatchLabel === "match"
+              ? "Voice matched"
+              : speakerMatchLabel === "mismatch"
+              ? "Voice mismatch"
               : speakerConfig.label}
           </span>
         </div>
