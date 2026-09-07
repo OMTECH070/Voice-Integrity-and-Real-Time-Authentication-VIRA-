@@ -9,6 +9,8 @@ export interface RollingSpeechBufferConfig {
   hopDurationMs?: number;
   /** Maximum speech duration in milliseconds retained in memory before dropping oldest. Default 10000ms (10s). */
   maxBufferDurationMs?: number;
+  /** Maximum allowable silence/pause duration in milliseconds between conversational speech segments before resetting incomplete buffer. Default 5000ms (5s). */
+  maxPauseDurationMs?: number;
 }
 
 export interface AnalysisWindow {

@@ -5,6 +5,7 @@ import type { AnalysisWindow, RollingSpeechBufferConfig } from "./types";
 const DEFAULT_TARGET_DURATION_MS = 3000; // 3 seconds
 const DEFAULT_HOP_DURATION_MS = 1500; // 1.5 seconds stride (50% overlap)
 const DEFAULT_MAX_BUFFER_DURATION_MS = 10000; // 10 seconds max memory bound
+const DEFAULT_MAX_PAUSE_DURATION_MS = 5000; // 5 seconds max pause retention before expiring incomplete speech
 
 /**
  * Accumulates gated speech-only PCM frames and emits sliding analysis windows
@@ -12,6 +13,8 @@ const DEFAULT_MAX_BUFFER_DURATION_MS = 10000; // 10 seconds max memory bound
  *
  * Design:
  * - Only fed speech-classified frames (never silence).
+ * - Retains accumulated speech across normal short conversational pauses.
+ * - Expires incomplete windows only after prolonged silence (> maxPauseDurationMs).
  * - Enforces memory limits: older frames beyond max capacity are pruned.
  * - Slices independent Float32Array copies for each emitted AnalysisWindow.
  * - Sequence numbers monotonically increment for tracking on the server.
@@ -20,17 +23,20 @@ export class RollingSpeechBuffer {
   private readonly targetDurationMs: number;
   private readonly hopDurationMs: number;
   private readonly maxBufferDurationMs: number;
+  private readonly maxPauseDurationMs: number;
 
   private chunks: Float32Array[] = [];
   private totalBufferedSamples = 0;
   private sampleRate: number | null = null;
   private sequenceNumber = 0;
   private oldestSampleTimestampMs = 0;
+  private lastSampleTimestampMs = -1;
 
   constructor(config: RollingSpeechBufferConfig = {}) {
     this.targetDurationMs = config.targetWindowDurationMs ?? DEFAULT_TARGET_DURATION_MS;
     this.hopDurationMs = config.hopDurationMs ?? DEFAULT_HOP_DURATION_MS;
     this.maxBufferDurationMs = config.maxBufferDurationMs ?? DEFAULT_MAX_BUFFER_DURATION_MS;
+    this.maxPauseDurationMs = config.maxPauseDurationMs ?? DEFAULT_MAX_PAUSE_DURATION_MS;
 
     if (this.hopDurationMs <= 0) {
       throw new Error("RollingSpeechBuffer: hopDurationMs must be greater than 0");
@@ -66,15 +72,35 @@ export class RollingSpeechBuffer {
 
     if (this.chunks.length === 0) {
       this.oldestSampleTimestampMs = timestampMs;
+    } else if (this.lastSampleTimestampMs >= 0) {
+      const pauseDurationMs = timestampMs - this.lastSampleTimestampMs;
+      if (pauseDurationMs > this.maxPauseDurationMs) {
+        console.log(
+          `[VIRA][BUFFER] Long silence detected (${Math.round(pauseDurationMs)}ms > ${this.maxPauseDurationMs}ms) — resetting incomplete speech buffer (${Math.round((this.totalBufferedSamples / sampleRate) * 1000)}ms discarded)`
+        );
+        this.chunks = [];
+        this.totalBufferedSamples = 0;
+        this.oldestSampleTimestampMs = timestampMs;
+      } else if (pauseDurationMs > 100) {
+        console.log(
+          `[VIRA][BUFFER] Pause detected (${Math.round(pauseDurationMs)}ms) — retaining accumulated speech (${Math.round((this.totalBufferedSamples / sampleRate) * 1000)}ms)`
+        );
+      }
     }
 
     this.chunks.push(samples);
     this.totalBufferedSamples += samples.length;
+    this.lastSampleTimestampMs = timestampMs + (samples.length / sampleRate) * 1000;
 
     const currentDurationMs = (this.totalBufferedSamples / sampleRate) * 1000;
+    const chunkDurationMs = (samples.length / sampleRate) * 1000;
     const targetSamples = Math.round((this.targetDurationMs * sampleRate) / 1000);
     const hopSamples = Math.round((this.hopDurationMs * sampleRate) / 1000);
     const maxSamples = Math.round((this.maxBufferDurationMs * sampleRate) / 1000);
+
+    console.log(
+      `[VIRA][BUFFER] Speech segment accepted duration=${Math.round(chunkDurationMs)}ms | accumulated speech=${Math.round(currentDurationMs)}ms / ${this.targetDurationMs}ms`
+    );
 
     const windows: AnalysisWindow[] = [];
 
@@ -173,5 +199,7 @@ export class RollingSpeechBuffer {
     this.sampleRate = null;
     this.sequenceNumber = 0;
     this.oldestSampleTimestampMs = 0;
+    this.lastSampleTimestampMs = -1;
   }
 }
+
