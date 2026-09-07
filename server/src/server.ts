@@ -4,6 +4,15 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { healthCheck } from "./controllers/health.controller";
+import {
+  getDatasetStatistics,
+  getDatasetSamples,
+  getDatasetSampleById,
+  submitDatasetReview,
+  qualityCheckSample,
+  excludeDatasetSample,
+  exportDataset,
+} from "./controllers/dataset.controller";
 import { registerSocketHandlers } from "./sockets";
 import {
   ClientToServerEvents,
@@ -20,6 +29,15 @@ const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 app.get("/health", healthCheck);
+
+// Dataset & ML Reviewer Endpoints for AdminDatasetView & Training Export
+app.get("/api/dataset/statistics", getDatasetStatistics);
+app.get("/api/dataset/samples", getDatasetSamples);
+app.get("/api/dataset/samples/:id", getDatasetSampleById);
+app.post("/api/dataset/samples/:id/review", submitDatasetReview);
+app.post("/api/dataset/samples/:id/quality-check", qualityCheckSample);
+app.post("/api/dataset/samples/:id/exclude", excludeDatasetSample);
+app.get("/api/dataset/export", exportDataset);
 
 // NOTE: auth, profile, and contacts are now handled directly by the
 // client talking to Supabase (see client/src/services/supabaseClient.ts),

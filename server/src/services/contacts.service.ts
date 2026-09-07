@@ -16,6 +16,10 @@ export async function getRelationship(
   viewerId: string,
   callerId: string
 ): Promise<CallerRelationship> {
+  if (!supabaseAdmin) {
+    return "unknown";
+  }
+
   const { data, error } = await supabaseAdmin
     .from("contacts")
     .select("contact_user_id")

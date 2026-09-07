@@ -3,6 +3,7 @@ import path from "path";
 import { InferenceSession, Tensor } from "onnxruntime-node";
 import { resampleLinear } from "../audio/voiceLiveness/resample";
 import { logger } from "../utils/logger";
+import { supabaseAdmin } from "./supabaseAdmin";
 
 const MODEL_NAME = "ECAPA-TDNN";
 const MODEL_VERSION = "ECAPA-TDNN-v1";
@@ -355,6 +356,45 @@ export class VoiceAuthService {
   public getEnrolledProfile(userId: string): Float32Array | null {
     const profile = this.enrolledProfiles.get(userId);
     return profile ? profile.embedding : null;
+  }
+
+  public async getEnrolledProfileAsync(userId: string): Promise<Float32Array | null> {
+    const memory = this.getEnrolledProfile(userId);
+    if (memory) return memory;
+
+    if (!supabaseAdmin) return null;
+
+    try {
+      // 1. Check voice_profiles table first
+      const { data: vpData } = await (supabaseAdmin as any)
+        .from("voice_profiles")
+        .select("embedding")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (vpData?.embedding && Array.isArray(vpData.embedding)) {
+        this.setEnrolledProfile(userId, vpData.embedding);
+        logger.info(`VoiceAuthService: Loaded enrolled voice profile for ${userId} from voice_profiles table`);
+        return this.getEnrolledProfile(userId);
+      }
+
+      // 2. Check voice_embeddings table fallback
+      const { data: veData } = await (supabaseAdmin as any)
+        .from("voice_embeddings")
+        .select("embedding")
+        .eq("owner_id", userId)
+        .maybeSingle();
+
+      if (veData?.embedding && Array.isArray(veData.embedding)) {
+        this.setEnrolledProfile(userId, veData.embedding);
+        logger.info(`VoiceAuthService: Loaded enrolled voice profile for ${userId} from voice_embeddings table`);
+        return this.getEnrolledProfile(userId);
+      }
+    } catch (err) {
+      logger.warn(`VoiceAuthService: Database lookup failed for user ${userId}: ${err}`);
+    }
+
+    return null;
   }
 
   public getFullEnrolledProfile(userId: string): EnrolledVoiceProfile | null {

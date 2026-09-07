@@ -3,7 +3,7 @@ import path from "path";
 import { logger } from "../utils/logger";
 
 export interface XGBoostFeatures {
-  ecapaSimilarity: number; // 0.0 - 1.0
+  ecapaSimilarity: number | null; // 0.0 - 1.0 or null if not enrolled / unavailable
   aasistSpoofScore: number; // 0.0 - 1.0 (1 = synthetic, 0 = live)
   wav2vec2SpoofScore: number | null; // null if not-ready
   vadSpeechRatio: number; // 0.0 - 1.0
@@ -99,7 +99,9 @@ export class XGBoostIntegrityService {
    */
   public extractFeatureVector(input: XGBoostFeatures): number[] {
     return [
-      Math.max(0, Math.min(1, input.ecapaSimilarity)),
+      input.ecapaSimilarity !== null && input.ecapaSimilarity !== undefined
+        ? Math.max(0, Math.min(1, input.ecapaSimilarity))
+        : -1.0,
       Math.max(0, Math.min(1, input.aasistSpoofScore)),
       input.wav2vec2SpoofScore !== null ? Math.max(0, Math.min(1, input.wav2vec2SpoofScore)) : -1.0,
       Math.max(0, Math.min(1, input.vadSpeechRatio)),
@@ -142,11 +144,15 @@ export class XGBoostIntegrityService {
     if (input.isSpeakerMismatch) {
       voiceIntegrity -= 35;
       integrityFactors.push("Speaker mismatch: Voice acoustics do not match enrolled identity");
-    } else if (input.ecapaSimilarity >= 0.85) {
-      voiceIntegrity += 20;
-      integrityFactors.push(`Speaker identity verified (${(input.ecapaSimilarity * 100).toFixed(1)}% similarity)`);
-    } else if (input.ecapaSimilarity > 0) {
-      integrityFactors.push(`Speaker comparison in progress (${(input.ecapaSimilarity * 100).toFixed(1)}% similarity)`);
+    } else if (input.ecapaSimilarity !== null && input.ecapaSimilarity !== undefined) {
+      if (input.ecapaSimilarity >= 0.85) {
+        voiceIntegrity += 20;
+        integrityFactors.push(`Speaker identity verified (${(input.ecapaSimilarity * 100).toFixed(1)}% similarity)`);
+      } else if (input.ecapaSimilarity > 0) {
+        integrityFactors.push(`Speaker comparison in progress (${(input.ecapaSimilarity * 100).toFixed(1)}% similarity)`);
+      }
+    } else {
+      integrityFactors.push("No enrolled voice profile registered for contact");
     }
 
     const clampedIntegrity = Math.max(0, Math.min(100, Math.round(voiceIntegrity)));

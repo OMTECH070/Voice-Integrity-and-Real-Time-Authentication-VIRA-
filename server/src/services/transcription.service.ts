@@ -1,6 +1,6 @@
 import { logger } from "../utils/logger";
 
-export type TranscriptionProvider = "whisper" | "groq" | "gemini" | "mock" | "local";
+export type TranscriptionProvider = "deepgram" | "whisper" | "groq" | "gemini" | "mock" | "local";
 
 export interface TranscriptSegment {
   id?: string;
@@ -32,9 +32,9 @@ export interface TranscriptionResult {
  * Replaceable Real-Time Call Audio Transcription Service.
  *
  * Configurable via environment:
- * - TRANSCRIPTION_PROVIDER (whisper, groq, gemini, mock)
- * - TRANSCRIPTION_API_KEY (never hard-coded)
- * - TRANSCRIPTION_MODEL (e.g. whisper-1, distil-whisper)
+ * - TRANSCRIPTION_PROVIDER (deepgram, whisper, groq, gemini, mock)
+ * - DEEPGRAM_API_KEY / TRANSCRIPTION_API_KEY (never hard-coded)
+ * - TRANSCRIPTION_MODEL (e.g. nova-2, whisper-1, distil-whisper)
  */
 export class TranscriptionService {
   private provider: TranscriptionProvider;
@@ -46,12 +46,16 @@ export class TranscriptionService {
     this.provider =
       config?.provider ??
       (process.env.TRANSCRIPTION_PROVIDER as TranscriptionProvider) ??
-      "mock";
-    this.apiKey = config?.apiKey ?? process.env.TRANSCRIPTION_API_KEY ?? null;
+      (process.env.DEEPGRAM_API_KEY ? "deepgram" : "mock");
+    this.apiKey =
+      config?.apiKey ??
+      process.env.DEEPGRAM_API_KEY ??
+      process.env.TRANSCRIPTION_API_KEY ??
+      null;
     this.model =
       config?.model ??
       process.env.TRANSCRIPTION_MODEL ??
-      (this.provider === "whisper" ? "whisper-1" : "mock-v1");
+      (this.provider === "deepgram" ? "nova-2" : this.provider === "whisper" ? "whisper-1" : "mock-v1");
   }
 
   public getProviderStatus(): {
@@ -60,7 +64,7 @@ export class TranscriptionService {
     hasApiKey: boolean;
     ready: boolean;
   } {
-    const requiresKey = this.provider === "whisper" || this.provider === "groq" || this.provider === "gemini";
+    const requiresKey = this.provider === "deepgram" || this.provider === "whisper" || this.provider === "groq" || this.provider === "gemini";
     return {
       provider: this.provider,
       model: this.model,
@@ -94,13 +98,13 @@ export class TranscriptionService {
     }
 
     // If configured provider requires API key but missing, report explicit status
-    if ((this.provider === "whisper" || this.provider === "groq" || this.provider === "gemini") && !this.apiKey) {
-      logger.warn(`TranscriptionService: ${this.provider} requires TRANSCRIPTION_API_KEY. Set in server/.env.`);
+    if ((this.provider === "deepgram" || this.provider === "whisper" || this.provider === "groq" || this.provider === "gemini") && !this.apiKey) {
+      logger.warn(`TranscriptionService: ${this.provider} requires DEEPGRAM_API_KEY / TRANSCRIPTION_API_KEY. Set in server/.env.`);
       return {
         success: false,
         provider: this.provider,
         model: this.model,
-        error: "REQUIRES_EXTERNAL_API_KEY: TRANSCRIPTION_API_KEY not configured",
+        error: "REQUIRES_EXTERNAL_API_KEY: DEEPGRAM_API_KEY or TRANSCRIPTION_API_KEY not configured",
       };
     }
 
