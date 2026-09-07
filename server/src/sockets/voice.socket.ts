@@ -36,15 +36,33 @@ const MIN_SAMPLE_RATE = 8000;
 const MAX_SAMPLE_RATE = 96000;
 const MIN_WINDOW_DURATION_MS = 500;
 const MAX_WINDOW_DURATION_MS = 6000;
-const MAX_TIMESTAMP_DRIFT_MS = 30000; // 30 seconds max drift
+/** Maximum allowable audio stream timeline timestamp (24 hours in ms). Rejects wildly future timestamps. */
+const MAX_AUDIO_STREAM_TIMESTAMP_MS = 24 * 60 * 60 * 1000;
 
 /** Maximum analysis chunks permitted per second per direction per socket (stride is 1.5s -> ~0.67/s). */
 const MAX_CHUNKS_PER_SECOND = 4;
 
 interface CallAnalysisSession {
   lastSequenceNumber: { local: number; remote: number };
+  lastTimestampMs: { local: number; remote: number };
   chunksReceived: { local: number; remote: number };
   lastActiveMs: number;
+}
+
+export interface VoiceChunkValidationParams {
+  callId: string;
+  userId: string;
+  speakerDirection: "local" | "remote";
+  sequenceNumber: number;
+  timestampMs: number;
+  durationMs: number;
+  sampleRate: number;
+  byteLength: number;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  reason?: string;
 }
 
 interface RateLimitTracker {
@@ -86,6 +104,108 @@ function toFloat32Array(raw: Buffer | ArrayBufferLike | ArrayBufferView): Float3
   const copy = new Uint8Array(view.byteLength);
   copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
   return new Float32Array(copy.buffer, copy.byteOffset, copy.byteLength / 4);
+}
+
+export function validateAndTrackChunk(params: VoiceChunkValidationParams): ValidationResult {
+  const {
+    callId,
+    speakerDirection,
+    sequenceNumber,
+    timestampMs,
+    durationMs,
+    sampleRate,
+    byteLength,
+  } = params;
+
+  // 1. Direction validation
+  if (speakerDirection !== "local" && speakerDirection !== "remote") {
+    return { valid: false, reason: `Invalid speakerDirection "${speakerDirection}"` };
+  }
+
+  // 2. Sample rate validation
+  if (
+    typeof sampleRate !== "number" ||
+    !Number.isFinite(sampleRate) ||
+    sampleRate < MIN_SAMPLE_RATE ||
+    sampleRate > MAX_SAMPLE_RATE
+  ) {
+    return { valid: false, reason: `Invalid sampleRate ${sampleRate}` };
+  }
+
+  // 3. Duration validation
+  if (
+    typeof durationMs !== "number" ||
+    !Number.isFinite(durationMs) ||
+    durationMs < MIN_WINDOW_DURATION_MS ||
+    durationMs > MAX_WINDOW_DURATION_MS
+  ) {
+    return { valid: false, reason: `Invalid durationMs ${durationMs}` };
+  }
+
+  // 4. Sequence number validation (monotonic non-negative integer)
+  if (typeof sequenceNumber !== "number" || !Number.isInteger(sequenceNumber) || sequenceNumber < 0) {
+    return { valid: false, reason: `Invalid sequenceNumber ${sequenceNumber}` };
+  }
+
+  // 5. Audio stream timestamp validation (relative audio timeline, non-negative, bounded)
+  if (
+    typeof timestampMs !== "number" ||
+    !Number.isFinite(timestampMs) ||
+    timestampMs < 0 ||
+    timestampMs > MAX_AUDIO_STREAM_TIMESTAMP_MS
+  ) {
+    return { valid: false, reason: `Rejected invalid/wildly-future timestampMs ${timestampMs}` };
+  }
+
+  // 6. Binary PCM size & alignment validation
+  if (byteLength === 0 || byteLength > MAX_PAYLOAD_BYTES) {
+    return { valid: false, reason: `Rejected PCM payload with invalid byteLength ${byteLength}` };
+  }
+  if (byteLength % 4 !== 0) {
+    return { valid: false, reason: `Rejected PCM payload with misaligned byteLength ${byteLength}` };
+  }
+
+  // 7. Call-scoped session progression
+  let analysisSession = activeAnalysisSessions.get(callId);
+  if (!analysisSession) {
+    analysisSession = {
+      lastSequenceNumber: { local: -1, remote: -1 },
+      lastTimestampMs: { local: -1, remote: -1 },
+      chunksReceived: { local: 0, remote: 0 },
+      lastActiveMs: Date.now(),
+    };
+    activeAnalysisSessions.set(callId, analysisSession);
+  }
+
+  // Sequence monotonicity check (strict monotonic increase per direction within call)
+  if (
+    analysisSession.lastSequenceNumber[speakerDirection] >= 0 &&
+    sequenceNumber <= analysisSession.lastSequenceNumber[speakerDirection]
+  ) {
+    return {
+      valid: false,
+      reason: `Rejected non-monotonic/replayed sequenceNumber ${sequenceNumber} (last: ${analysisSession.lastSequenceNumber[speakerDirection]})`,
+    };
+  }
+
+  // Timestamp monotonicity check (stream timestamp cannot travel backwards)
+  if (
+    analysisSession.lastTimestampMs[speakerDirection] >= 0 &&
+    timestampMs < analysisSession.lastTimestampMs[speakerDirection]
+  ) {
+    return {
+      valid: false,
+      reason: `Rejected out-of-order/replayed timestampMs ${timestampMs} (last: ${analysisSession.lastTimestampMs[speakerDirection]})`,
+    };
+  }
+
+  // Update session tracking on successful validation
+  analysisSession.lastSequenceNumber[speakerDirection] = sequenceNumber;
+  analysisSession.lastTimestampMs[speakerDirection] = timestampMs;
+  analysisSession.chunksReceived[speakerDirection]++;
+  analysisSession.lastActiveMs = Date.now();
+
+  return { valid: true };
 }
 
 export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): void {
@@ -182,77 +302,7 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
       return;
     }
 
-    // 3. Validate direction
-    if (speakerDirection !== "local" && speakerDirection !== "remote") {
-      logger.warn(`Invalid speakerDirection "${speakerDirection}" from user ${userId}`);
-      return;
-    }
-
-    // 4. Rate Limiting Check (per socket + call + direction)
-    const rateLimitKey = `${socket.id}:${callId}:${speakerDirection}`;
-    if (!checkRateLimit(rateLimitKey)) {
-      logger.warn(`Rate limit exceeded for voice chunks on call ${callId} (${speakerDirection})`);
-      return;
-    }
-
-    // 5. Validate sample rate & duration bounds
-    if (
-      typeof sampleRate !== "number" ||
-      !Number.isFinite(sampleRate) ||
-      sampleRate < MIN_SAMPLE_RATE ||
-      sampleRate > MAX_SAMPLE_RATE
-    ) {
-      logger.warn(`Invalid sampleRate ${sampleRate} from user ${userId}`);
-      return;
-    }
-
-    if (
-      typeof durationMs !== "number" ||
-      !Number.isFinite(durationMs) ||
-      durationMs < MIN_WINDOW_DURATION_MS ||
-      durationMs > MAX_WINDOW_DURATION_MS
-    ) {
-      logger.warn(`Invalid durationMs ${durationMs} from user ${userId}`);
-      return;
-    }
-
-    // 6. Validate timestamp freshness (prevent replay of historical sessions)
-    if (
-      typeof timestampMs !== "number" ||
-      !Number.isFinite(timestampMs) ||
-      Math.abs(Date.now() - timestampMs) > MAX_TIMESTAMP_DRIFT_MS
-    ) {
-      logger.warn(`Rejected stale/invalid timestampMs ${timestampMs} from user ${userId}`);
-      return;
-    }
-
-    // 7. Validate sequence number (monotonic progression)
-    if (typeof sequenceNumber !== "number" || !Number.isInteger(sequenceNumber) || sequenceNumber < 0) {
-      logger.warn(`Invalid sequenceNumber ${sequenceNumber} from user ${userId}`);
-      return;
-    }
-
-    let analysisSession = activeAnalysisSessions.get(callId);
-    if (!analysisSession) {
-      analysisSession = {
-        lastSequenceNumber: { local: -1, remote: -1 },
-        chunksReceived: { local: 0, remote: 0 },
-        lastActiveMs: Date.now(),
-      };
-      activeAnalysisSessions.set(callId, analysisSession);
-    }
-
-    if (
-      analysisSession.lastSequenceNumber[speakerDirection] >= 0 &&
-      sequenceNumber <= analysisSession.lastSequenceNumber[speakerDirection]
-    ) {
-      logger.warn(
-        `Rejected non-monotonic/replayed sequenceNumber ${sequenceNumber} (last: ${analysisSession.lastSequenceNumber[speakerDirection]})`
-      );
-      return;
-    }
-
-    // 8. Validate binary PCM buffer (Float32 alignment and bounds)
+    // 3. Binary PCM existence check
     if (!pcm) {
       logger.warn(`Missing PCM payload from user ${userId}`);
       return;
@@ -263,26 +313,39 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
         ? pcm.byteLength
         : (pcm as Uint8Array | Buffer).byteLength ?? 0;
 
-    if (byteLength === 0 || byteLength > MAX_PAYLOAD_BYTES) {
-      logger.warn(
-        `Rejected PCM payload with invalid byteLength ${byteLength} (max ${MAX_PAYLOAD_BYTES})`
-      );
+    // 4. Rate Limiting Check (per socket + call + direction)
+    const rateLimitKey = `${socket.id}:${callId}:${speakerDirection}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      logger.warn(`Rate limit exceeded for voice chunks on call ${callId} (${speakerDirection})`);
       return;
     }
 
-    // Verify 4-byte Float32 alignment
-    if (byteLength % 4 !== 0) {
-      logger.warn(`Rejected PCM payload with misaligned byteLength ${byteLength}`);
+    // 5. Comprehensive Parameter, Monotonic Sequence & Audio Stream Timestamp Validation
+    const validation = validateAndTrackChunk({
+      callId,
+      userId,
+      speakerDirection,
+      sequenceNumber,
+      timestampMs,
+      durationMs,
+      sampleRate,
+      byteLength,
+    });
+
+    if (!validation.valid) {
+      logger.warn(`[VIRA][PIPELINE] ${validation.reason} from user ${userId}`);
       return;
     }
 
-    // Update session tracking
-    analysisSession.lastSequenceNumber[speakerDirection] = sequenceNumber;
-    analysisSession.chunksReceived[speakerDirection]++;
-    analysisSession.lastActiveMs = Date.now();
+    logger.info(
+      `[VIRA][PIPELINE] Audio chunk accepted | callId=${callId} | sequence=${sequenceNumber} | timestampMs=${timestampMs} | direction=${speakerDirection}`
+    );
 
-    // 9. Execute Real End-to-End ML Pipeline on the REMOTE caller's speech window
+    // 6. Execute Real End-to-End ML Pipeline on the REMOTE caller's speech window
     if (speakerDirection === "remote") {
+      logger.info(
+        `[VIRA][PIPELINE] Analysis fanout started | callId=${callId} | sequence=${sequenceNumber} | durationMs=${durationMs}`
+      );
       const samples = toFloat32Array(pcm);
 
       // Determine the other participant's ID for speaker verification lookup
