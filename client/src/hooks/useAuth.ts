@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../services/supabaseClient";
-import { PublicUserProfile } from "../types/profile";
+import { PublicUserProfile, UserRole } from "../types/profile";
 
 export type SignUpResult =
   | "success"
@@ -43,7 +43,8 @@ interface ProfileRow {
 }
 
 function rowToProfile(row: ProfileRow): PublicUserProfile {
-  const role = (row.role === "admin" || row.is_admin === true) ? "admin" : "user";
+  const role: UserRole =
+    (row.role?.trim().toLowerCase() === "admin" || row.is_admin === true) ? "admin" : "user";
   return {
     id: row.id,
     username: row.username,
@@ -73,6 +74,7 @@ export function useAuth(): UseAuthResult {
 
     if (fetchError) {
       setError(fetchError.message);
+      setUser(null);
       return;
     }
     setUser(rowToProfile(data as ProfileRow));
@@ -110,9 +112,11 @@ export function useAuth(): UseAuthResult {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        loadProfile(session.user.id);
+        setIsLoading(true);
+        loadProfile(session.user.id).finally(() => setIsLoading(false));
       } else {
         setUser(null);
+        setIsLoading(false);
       }
     });
 

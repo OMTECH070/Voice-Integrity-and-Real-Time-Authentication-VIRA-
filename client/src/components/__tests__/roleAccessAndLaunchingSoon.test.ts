@@ -225,4 +225,90 @@ test("VIRA Role-Based Access Control & Launching Soon Test Suite", async (t) => 
       }
     }
   });
+
+  await t.test("TEST A — EXISTING ACCOUNT: login -> VIRA skeleton -> Full Calling App", () => {
+    // Existing accounts in public.profiles receive role = 'admin' via migration
+    const existingUser: PublicUserProfile = {
+      id: "usr_existing_001",
+      username: "nishant_17",
+      displayName: "Nishant Raj Anand",
+      bio: null,
+      age: 26,
+      country: "IN",
+      avatarUrl: null,
+      createdAt: 1725015102353,
+      role: "admin",
+    };
+
+    // While loading profile/session:
+    const loadingView = determinePostLoginView({ isLoading: true, user: null }, "app");
+    assert.equal(loadingView, "skeleton", "While loading session, ViraAppSkeleton is displayed");
+
+    // Once loaded:
+    const loadedView = determinePostLoginView({ isLoading: false, user: existingUser }, "app");
+    assert.equal(loadedView, "home", "Existing account is routed directly to the full VIRA Calling App (Home)");
+  });
+
+  await t.test("TEST B — NEW ACCOUNT: signup -> login -> VIRA skeleton -> Launching Soon", () => {
+    // New accounts in public.profiles default strictly to role = 'user' via handle_new_user trigger
+    const newUser: PublicUserProfile = {
+      id: "usr_new_999",
+      username: "brand_new_user",
+      displayName: "Brand New User",
+      bio: null,
+      age: 24,
+      country: "US",
+      avatarUrl: null,
+      createdAt: Date.now(),
+      role: "user",
+    };
+
+    // While loading profile/session:
+    const loadingView = determinePostLoginView({ isLoading: true, user: null }, "app");
+    assert.equal(loadingView, "skeleton", "While loading session, ViraAppSkeleton is displayed");
+
+    // Once loaded:
+    const loadedView = determinePostLoginView({ isLoading: false, user: newUser }, "app");
+    assert.equal(loadedView, "launching-soon", "New account is routed to Launching Soon page");
+  });
+
+  await t.test("TEST C — DIRECT URL: login as new user and manually open /app", () => {
+    const newUser: PublicUserProfile = {
+      id: "usr_new_999",
+      username: "brand_new_user",
+      displayName: "Brand New User",
+      bio: null,
+      age: 24,
+      country: "US",
+      avatarUrl: null,
+      createdAt: Date.now(),
+      role: "user",
+    };
+
+    // Direct /app navigation
+    const appRouteView = determinePostLoginView({ isLoading: false, user: newUser }, "app");
+    assert.equal(appRouteView, "launching-soon", "Direct access to /app must render Launching Soon, NOT Calling App");
+
+    // Direct /admin/dataset navigation
+    const adminRouteView = determinePostLoginView({ isLoading: false, user: newUser }, "admin-dataset");
+    assert.equal(adminRouteView, "launching-soon", "Direct access to /admin/dataset must render Launching Soon, NOT Admin View");
+  });
+
+  await t.test("TEST D — ADMIN: login with existing account", () => {
+    const adminAccount: PublicUserProfile = {
+      id: "usr_admin_existing",
+      username: "omtech",
+      displayName: "Om",
+      bio: null,
+      age: 25,
+      country: "IN",
+      avatarUrl: null,
+      createdAt: 1725005467125,
+      role: "admin",
+    };
+
+    const view = determinePostLoginView({ isLoading: false, user: adminAccount }, "app");
+    assert.equal(view, "home", "Admin account retains full access to existing Calling App");
+  });
+
 });

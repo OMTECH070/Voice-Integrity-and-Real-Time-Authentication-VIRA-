@@ -167,6 +167,9 @@ function AppContent() {
 
   // 2. Explicit Login Route ('/login') & Sign Up Route ('/signup')
   if (currentRoute === "login" || currentRoute === "signup") {
+    if (auth.isLoading) {
+      return <ViraAppSkeleton message="Authenticating secure session..." />;
+    }
     if (auth.user && !authSuccessPending) {
       if (auth.needsUsername) {
         return <ClaimUsername auth={auth} />;
