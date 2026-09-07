@@ -15,6 +15,7 @@ import { useEasyMode } from "../context/EasyModeContext";
 import { EasyModeNavToggle } from "../components/EasyModeNavToggle";
 import { EasyModeListenButton } from "../components/EasyModeListenButton";
 import { ViraAppSkeleton } from "../components/ViraAppSkeleton";
+import { RecordingsPanel } from "./RecordingsPanel";
 
 interface HomeProps {
   auth: UseAuthResult;
@@ -41,7 +42,7 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
     dismissError,
   } = useCallManager();
 
-  const [activeTab, setActiveTab] = useState<"home" | "contacts">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "contacts" | "recordings">("home");
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showVoiceEnrollment, setShowVoiceEnrollment] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
@@ -128,6 +129,12 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
               onClick={() => setActiveTab("contacts")}
             >
               Contacts
+            </button>
+            <button
+              className={`nav-link-btn ${activeTab === "recordings" ? "active" : ""}`}
+              onClick={() => setActiveTab("recordings")}
+            >
+              Recordings
             </button>
             <button
               className="nav-link-btn"
@@ -334,6 +341,27 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
                   </div>
                 )}
               </div>
+
+              {/* Easy Mode Call Recordings Section */}
+              <div
+                style={{
+                  marginTop: "24px",
+                  padding: "24px",
+                  borderRadius: "12px",
+                  border: "2px solid #171717",
+                  background: "#f5f5f5",
+                }}
+              >
+                <div style={{ marginBottom: "18px" }}>
+                  <h2 style={{ fontSize: "20px", fontWeight: 800, margin: 0 }}>
+                    🎙️ {t("callRecordings")}
+                  </h2>
+                  <p style={{ fontSize: "14px", color: "#525252", margin: "4px 0 0 0" }}>
+                    {t("localPrivacyNotice")}
+                  </p>
+                </div>
+                <RecordingsPanel />
+              </div>
             </div>
           ) : activeTab === "home" ? (
             <div className="editorial-home-content">
@@ -358,6 +386,12 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
                     }}
                   >
                     Start Secure Call
+                  </button>
+                  <button
+                    className="btn-outline"
+                    onClick={() => setActiveTab("recordings")}
+                  >
+                    Recordings
                   </button>
                   <button
                     className="btn-outline"
@@ -485,7 +519,7 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
                 </table>
               </section>
             </div>
-          ) : (
+          ) : activeTab === "contacts" ? (
             <div className="editorial-section">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
@@ -502,6 +536,10 @@ export function Home({ auth, onBackToLanding, onLogout }: HomeProps) {
                 </button>
               </div>
               {auth.user && <ContactsPanel ownUserId={auth.user.id} />}
+            </div>
+          ) : (
+            <div className="editorial-section">
+              <RecordingsPanel onBack={() => setActiveTab("home")} />
             </div>
           )}
         </>

@@ -55,6 +55,31 @@ export interface TranslationSchema {
   hideDetails: string;
   technicalDetails: string;
 
+  // Call Recording & Safety Actions
+  record: string;
+  stopRecording: string;
+  recording: string;
+  recordingSaved: string;
+  playRecording: string;
+  pauseRecording: string;
+  playback: string;
+  downloadRecording: string;
+  reportScamCall: string;
+  callReported: string;
+  whyViraFlagged: string;
+  whyViraFlaggedTitle: string;
+  noReasonEvidence: string;
+  recordings: string;
+  callRecordings: string;
+  noRecordings: string;
+  delete: string;
+  deleteRecording: string;
+  deleteConfirm: string;
+  storageFull: string;
+  duration: string;
+  size: string;
+  localPrivacyNotice: string;
+
   // Statuses
   waitingForAnalysis: string;
   analysisUnavailable: string;
@@ -188,6 +213,31 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
     moreDetails: "More details",
     hideDetails: "Hide details",
     technicalDetails: "Technical Specifications",
+
+    // Call Recording & Safety Actions
+    record: "Record",
+    stopRecording: "Stop Recording",
+    recording: "Recording...",
+    recordingSaved: "Recording saved locally.",
+    playRecording: "Play",
+    pauseRecording: "Pause",
+    playback: "Playback",
+    downloadRecording: "Download",
+    reportScamCall: "Report Scam Call",
+    callReported: "Call reported as suspicious.",
+    whyViraFlagged: "Why VIRA Flagged It",
+    whyViraFlaggedTitle: "Why VIRA Flagged This Call",
+    noReasonEvidence: "VIRA does not have enough evidence to provide a specific reason.",
+    recordings: "Recordings",
+    callRecordings: "Call Recordings",
+    noRecordings: "No recordings saved yet.",
+    delete: "Delete",
+    deleteRecording: "Delete Recording",
+    deleteConfirm: "Delete this recording?",
+    storageFull: "Unable to save recording. Device storage is full.",
+    duration: "Duration",
+    size: "Size",
+    localPrivacyNotice: "Recordings are stored only on your device and never uploaded.",
 
     // Statuses
     waitingForAnalysis: "Waiting for analysis",
@@ -325,6 +375,31 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
     moreDetails: "अधिक जानकारी",
     hideDetails: "जानकारी छुपाएं",
     technicalDetails: "तकनीकी विवरण",
+
+    // Call Recording & Safety Actions
+    record: "रिकॉर्ड करें",
+    stopRecording: "रिकॉर्डिंग रोकें",
+    recording: "रिकॉर्डिंग जारी है...",
+    recordingSaved: "रिकॉर्डिंग डिवाइस पर सेव हो गई।",
+    playRecording: "चलाएं",
+    pauseRecording: "रोकें",
+    playback: "रिकॉर्डिंग सुनें",
+    downloadRecording: "डाउनलोड करें",
+    reportScamCall: "स्कैम कॉल रिपोर्ट करें",
+    callReported: "कॉल को संदिग्ध के रूप में चिह्नित किया गया।",
+    whyViraFlagged: "VIRA ने चेतावनी क्यों दी?",
+    whyViraFlaggedTitle: "VIRA ने इस कॉल को चेतावनी क्यों दी",
+    noReasonEvidence: "VIRA के पास कोई विशिष्ट कारण बताने के लिए पर्याप्त प्रमाण नहीं हैं।",
+    recordings: "रिकॉर्डिंग्स",
+    callRecordings: "कॉल रिकॉर्डिंग्स",
+    noRecordings: "अभी तक कोई रिकॉर्डिंग सहेजी नहीं गई है।",
+    delete: "हटाएं",
+    deleteRecording: "रिकॉर्डिंग हटाएं",
+    deleteConfirm: "क्या आप इस रिकॉर्डिंग को हटाना चाहते हैं?",
+    storageFull: "रिकॉर्डिंग सहेजने में असमर्थ। डिवाइस मेमोरी भरी हुई है।",
+    duration: "अवधि",
+    size: "आकार",
+    localPrivacyNotice: "रिकॉर्डिंग्स केवल आपके डिवाइस पर सुरक्षित रहती हैं और कभी अपलोड नहीं की जाती हैं।",
 
     // Statuses
     waitingForAnalysis: "विश्लेषण की प्रतीक्षा है",
