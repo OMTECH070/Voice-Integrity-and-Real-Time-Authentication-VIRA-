@@ -386,7 +386,7 @@ export class VoiceAuthService {
     if (!supabaseAdmin) return null;
 
     try {
-      // 1. Check voice_profiles table first
+      // Check voice_profiles table
       const { data: vpData } = await (supabaseAdmin as any)
         .from("voice_profiles")
         .select("embedding")
@@ -396,19 +396,6 @@ export class VoiceAuthService {
       if (vpData?.embedding && Array.isArray(vpData.embedding)) {
         this.setEnrolledProfile(userId, vpData.embedding);
         logger.info(`VoiceAuthService: Loaded enrolled voice profile for ${userId} from voice_profiles table`);
-        return this.getEnrolledProfile(userId);
-      }
-
-      // 2. Check voice_embeddings table fallback
-      const { data: veData } = await (supabaseAdmin as any)
-        .from("voice_embeddings")
-        .select("embedding")
-        .eq("owner_id", userId)
-        .maybeSingle();
-
-      if (veData?.embedding && Array.isArray(veData.embedding)) {
-        this.setEnrolledProfile(userId, veData.embedding);
-        logger.info(`VoiceAuthService: Loaded enrolled voice profile for ${userId} from voice_embeddings table`);
         return this.getEnrolledProfile(userId);
       }
     } catch (err) {
