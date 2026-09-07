@@ -80,7 +80,12 @@ function toFloat32Array(raw: Buffer | ArrayBufferLike | ArrayBufferView): Float3
   if (raw instanceof Float32Array) return raw;
   if (raw instanceof ArrayBuffer) return new Float32Array(raw);
   const view = raw as ArrayBufferView;
-  return new Float32Array(view.buffer, view.byteOffset, view.byteLength / 4);
+  if (view.byteOffset % 4 === 0) {
+    return new Float32Array(view.buffer, view.byteOffset, view.byteLength / 4);
+  }
+  const copy = new Uint8Array(view.byteLength);
+  copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+  return new Float32Array(copy.buffer, copy.byteOffset, copy.byteLength / 4);
 }
 
 export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): void {
@@ -480,6 +485,7 @@ export function cleanupVoiceAnalysisSession(callId: string): void {
   activeAnalysisSessions.delete(callId);
   voiceLivenessService.cleanupSession(callId);
   voiceIntegrityService.cleanupSession(callId);
+  transcriptionService.clearCallTranscript(callId);
   for (const key of rateLimits.keys()) {
     if (key.includes(`:${callId}:`)) {
       rateLimits.delete(key);
