@@ -164,6 +164,10 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
       pcm,
     } = payload;
 
+    logger.info(
+      `[VIRA][PIPELINE] Audio chunk received | callId=${callId} | sequence=${sequenceNumber} | durationMs=${durationMs}`
+    );
+
     // 2. Validate call session authorization
     const session = callService.getSession(callId);
     if (!session || (session.callerId !== userId && session.calleeId !== userId)) {
@@ -343,6 +347,9 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
           // 4. Multi-Signal Call Risk Analysis (Social Engineering / Financial / Urgency)
           const callTranscripts = transcriptionService.getCallTranscript(callId);
           const riskAssessment = callRiskService.analyzeTranscript(callId, callTranscripts);
+          logger.info(
+            `[VIRA][RISK] Transcript analyzed | callId=${callId} | risk=${riskAssessment.riskLevel} | score=${riskAssessment.riskScore}`
+          );
 
           // 5. XGBoost / Multi-Signal Calibrated Baseline Scoring
           let sumSq = 0;
@@ -368,6 +375,7 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
           });
 
           // 6. Persist candidate dataset sample into ML Dataset Collection
+          logger.info(`[VIRA][DATASET] Sample ingestion attempted | callId=${callId}`);
           try {
             await datasetService.ingestSample({
               callId,
