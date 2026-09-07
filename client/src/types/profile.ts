@@ -7,6 +7,7 @@
  * currently online.
  */
 export type UserId = string;
+export type UserRole = "admin" | "user";
 
 export interface PublicUserProfile {
   id: UserId;
@@ -19,6 +20,7 @@ export interface PublicUserProfile {
   country: string | null;
   avatarUrl: string | null;
   createdAt: number;
+  role?: UserRole;
 }
 
 export interface ProfileUpdateRequest {

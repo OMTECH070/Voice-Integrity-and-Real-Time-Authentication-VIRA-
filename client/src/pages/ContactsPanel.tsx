@@ -27,6 +27,7 @@ function rowToProfile(row: ProfileRow): PublicUserProfile {
     country: row.country,
     avatarUrl: row.avatar_url,
     createdAt: new Date(row.created_at).getTime(),
+    role: "user",
   };
 }
 

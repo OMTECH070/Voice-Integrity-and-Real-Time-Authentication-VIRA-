@@ -5,7 +5,6 @@ import { PublicUserProfile } from "../types/profile";
 export type SignUpResult =
   | "success"
   | "confirmation_required"
-  | "existing_account"
   | "error";
 
 export interface UseAuthResult {
@@ -39,9 +38,12 @@ interface ProfileRow {
   country: string | null;
   avatar_url: string | null;
   created_at: string;
+  role?: string | null;
+  is_admin?: boolean | null;
 }
 
 function rowToProfile(row: ProfileRow): PublicUserProfile {
+  const role = (row.role === "admin" || row.is_admin === true) ? "admin" : "user";
   return {
     id: row.id,
     username: row.username,
@@ -51,6 +53,7 @@ function rowToProfile(row: ProfileRow): PublicUserProfile {
     country: row.country,
     avatarUrl: row.avatar_url,
     createdAt: new Date(row.created_at).getTime(),
+    role,
   };
 }
 

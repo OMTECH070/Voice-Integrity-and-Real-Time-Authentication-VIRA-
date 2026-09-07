@@ -7,10 +7,9 @@ test("VIRA Auth Registration & Confirmation Flow Test Suite", async (t) => {
     const states: SignUpResult[] = [
       "success",
       "confirmation_required",
-      "existing_account",
       "error",
     ];
-    assert.equal(states.length, 4, "Must define 4 valid SignUpResult states");
+    assert.equal(states.length, 3, "Must define 3 valid SignUpResult states");
   });
 
   await t.test("2. Signup without session is classified strictly as confirmation_required without checking identities.length", () => {

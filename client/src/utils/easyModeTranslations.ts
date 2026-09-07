@@ -80,6 +80,14 @@ export interface TranslationSchema {
   size: string;
   localPrivacyNotice: string;
 
+  // Launching Soon Experience
+  launchingSoon: string;
+  launchingSoonTitle: string;
+  launchingSoonSubtitle: string;
+  launchingSoonAccountReady: string;
+  launchingSoonAccountDesc: string;
+  launchingSoonSpoken: string;
+
   // Statuses
   waitingForAnalysis: string;
   analysisUnavailable: string;
@@ -238,6 +246,14 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
     duration: "Duration",
     size: "Size",
     localPrivacyNotice: "Recordings are stored only on your device and never uploaded.",
+
+    // Launching Soon Experience
+    launchingSoon: "Launching Soon",
+    launchingSoonTitle: "VIRA is getting ready for you.",
+    launchingSoonSubtitle: "Advanced voice integrity and secure calling features will be available soon.",
+    launchingSoonAccountReady: "Account Verified",
+    launchingSoonAccountDesc: "Your account is active. Full voice protection and calling features will unlock shortly.",
+    launchingSoonSpoken: "VIRA is getting ready for you. Advanced voice integrity and secure calling features will be available soon. Your account has been verified.",
 
     // Statuses
     waitingForAnalysis: "Waiting for analysis",
@@ -400,6 +416,14 @@ export const EASY_MODE_TRANSLATIONS: Record<EasyModeLanguage, TranslationSchema>
     duration: "अवधि",
     size: "आकार",
     localPrivacyNotice: "रिकॉर्डिंग्स केवल आपके डिवाइस पर सुरक्षित रहती हैं और कभी अपलोड नहीं की जाती हैं।",
+
+    // Launching Soon Experience
+    launchingSoon: "जल्द आ रहा है",
+    launchingSoonTitle: "VIRA आपके लिए तैयार हो रहा है।",
+    launchingSoonSubtitle: "उन्नत voice integrity और secure calling सुविधाएँ जल्द उपलब्ध होंगी।",
+    launchingSoonAccountReady: "खाता सत्यापित",
+    launchingSoonAccountDesc: "आपका खाता सक्रिय है। पूर्ण वॉइस सुरक्षा और कॉलिंग सुविधाएँ जल्द ही अनलॉक होंगी।",
+    launchingSoonSpoken: "VIRA आपके लिए तैयार हो रहा है। उन्नत voice integrity और secure calling सुविधाएँ जल्द उपलब्ध होंगी। आपका खाता सत्यापित हो चुका है।",
 
     // Statuses
     waitingForAnalysis: "विश्लेषण की प्रतीक्षा है",
