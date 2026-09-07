@@ -44,6 +44,9 @@ BEGIN
   END IF;
 END $$;
 
+-- 5. Force PostgREST to reload schema cache immediately
+NOTIFY pgrst, 'reload schema';
+
 -- ============================================================================
 -- VERIFICATION QUERIES
 -- ============================================================================
