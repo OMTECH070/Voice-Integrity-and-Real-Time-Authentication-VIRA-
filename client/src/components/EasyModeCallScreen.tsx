@@ -39,6 +39,19 @@ interface EasyModeCallScreenProps {
   callRiskLevel?: "LOW" | "MEDIUM" | "HIGH" | null;
   conversationalSignals?: string[];
   voiceIntegrityScore?: number | null;
+  // Call Recording & Safety Actions
+  isRecording?: boolean;
+  recordingUrl?: string | null;
+  isPlaying?: boolean;
+  statusMessage?: string | null;
+  isReported?: boolean;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
+  onTogglePlayPause?: () => void;
+  onDownloadRecording?: () => void;
+  onReportScamCall?: () => void;
+  onOpenWhyFlagged?: () => void;
+  isRecordingSupported?: boolean;
 }
 
 export function EasyModeCallScreen(props: EasyModeCallScreenProps) {
@@ -57,6 +70,18 @@ export function EasyModeCallScreen(props: EasyModeCallScreenProps) {
     callRiskScore,
     callRiskLevel,
     conversationalSignals = [],
+    isRecording = false,
+    recordingUrl = null,
+    isPlaying = false,
+    statusMessage = null,
+    isReported = false,
+    onStartRecording,
+    onStopRecording,
+    onTogglePlayPause,
+    onDownloadRecording,
+    onReportScamCall,
+    onOpenWhyFlagged,
+    isRecordingSupported = true,
   } = props;
 
   // Format call duration MM:SS
@@ -508,6 +533,128 @@ export function EasyModeCallScreen(props: EasyModeCallScreenProps) {
           📞 {t("endCall")}
         </button>
       </div>
+
+      {/* Easy Mode Call Recording & Safety Actions */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "10px",
+          marginBottom: "12px",
+        }}
+      >
+        {/* Record / Stop button */}
+        <button
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          disabled={!isRecordingSupported || (props.callState !== "CONNECTED" && !isRecording)}
+          style={{
+            padding: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            background: isRecording ? "#dc2626" : "#ffffff",
+            color: isRecording ? "#ffffff" : "#000000",
+            border: isRecording ? "2px solid #dc2626" : "2px solid #000000",
+            borderRadius: "10px",
+            cursor: "pointer",
+            minHeight: "48px",
+          }}
+        >
+          {isRecording ? `⏹ ${t("stopRecording")}` : `⏺ ${t("record")}`}
+        </button>
+
+        {/* Playback button */}
+        <button
+          onClick={onTogglePlayPause}
+          disabled={!recordingUrl}
+          style={{
+            padding: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            background: "#ffffff",
+            color: recordingUrl ? "#000000" : "#a3a3a3",
+            border: recordingUrl ? "2px solid #000000" : "2px solid #e5e5e5",
+            borderRadius: "10px",
+            cursor: recordingUrl ? "pointer" : "not-allowed",
+            minHeight: "48px",
+          }}
+        >
+          {isPlaying ? `⏸ ${t("pauseRecording")}` : `▶ ${t("playback")}`}
+        </button>
+
+        {/* Download button */}
+        <button
+          onClick={onDownloadRecording}
+          disabled={!recordingUrl}
+          style={{
+            padding: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            background: "#ffffff",
+            color: recordingUrl ? "#000000" : "#a3a3a3",
+            border: recordingUrl ? "2px solid #000000" : "2px solid #e5e5e5",
+            borderRadius: "10px",
+            cursor: recordingUrl ? "pointer" : "not-allowed",
+            minHeight: "48px",
+          }}
+        >
+          💾 {t("downloadRecording")}
+        </button>
+
+        {/* Report Scam Call button */}
+        <button
+          onClick={onReportScamCall}
+          style={{
+            padding: "12px",
+            fontSize: "14px",
+            fontWeight: 700,
+            background: isReported ? "#fef2f2" : "#ffffff",
+            color: "#dc2626",
+            border: "2px solid #dc2626",
+            borderRadius: "10px",
+            cursor: "pointer",
+            minHeight: "48px",
+          }}
+        >
+          {isReported ? `✓ ${t("callReported")}` : `🚨 ${t("reportScamCall")}`}
+        </button>
+      </div>
+
+      {/* Why VIRA Flagged It button */}
+      <button
+        onClick={onOpenWhyFlagged}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "14px",
+          fontWeight: 700,
+          background: "#ffffff",
+          color: "#000000",
+          border: "2px solid #000000",
+          borderRadius: "10px",
+          cursor: "pointer",
+          marginBottom: "12px",
+          minHeight: "48px",
+        }}
+      >
+        ℹ️ {t("whyViraFlagged")}
+      </button>
+
+      {/* Status Messages */}
+      {isRecording && (
+        <div style={{ textAlign: "center", color: "#dc2626", fontWeight: 700, fontSize: "14px", marginBottom: "12px" }}>
+          🔴 {t("recording")}
+        </div>
+      )}
+      {!isRecording && statusMessage && (
+        <div style={{ textAlign: "center", color: "#16a34a", fontWeight: 600, fontSize: "14px", marginBottom: "12px" }}>
+          {statusMessage === "Recording saved locally." ? t("recordingSaved") : statusMessage}
+        </div>
+      )}
+      {isReported && (
+        <div style={{ textAlign: "center", color: "#dc2626", fontWeight: 600, fontSize: "14px", marginBottom: "12px" }}>
+          🚨 {t("callReported")}
+        </div>
+      )}
 
       {/* Technical Forensic Telemetry Toggle ("More details") */}
       <div style={{ textAlign: "center", marginTop: "16px" }}>

@@ -844,6 +844,145 @@ div[tabindex="0"]:focus-visible {
   border-color: var(--color-danger);
 }
 
+/* Call Recording & Safety Actions Toolbar */
+.call-safety-actions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-call-safety {
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: #ffffff;
+  color: var(--color-black);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-call-safety:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-medium);
+}
+
+.btn-call-safety:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-call-record.is-recording {
+  background: var(--color-danger);
+  color: #ffffff;
+  border-color: var(--color-danger);
+  animation: pulse-recording 1.5s infinite;
+}
+
+@keyframes pulse-recording {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.btn-call-report {
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.btn-call-report:hover:not(:disabled) {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+}
+
+.btn-call-report.is-reported {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+.call-recording-status-msg {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.call-recording-status-msg.recording {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.call-recording-status-msg.saved {
+  color: var(--color-success);
+}
+
+.call-recording-status-msg.reported {
+  color: var(--color-danger);
+}
+
+/* Why VIRA Flagged Modal */
+.why-flagged-dialog {
+  background: #ffffff;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow-modal);
+}
+
+.why-flagged-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: var(--color-black);
+}
+
+.flag-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.flag-metric-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.flag-metric-val {
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.flag-reason-box {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.why-flagged-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ==========================================================================
    Modals (Clean Minimal Dialogs)
    ========================================================================== */
@@ -4695,4 +4834,671 @@ html.lenis, html.lenis body {
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   VIRA Skeleton Loading Screen
+   ========================================================================== */
+
+.vira-skeleton-page-wrapper {
+  background-color: #0a0b10;
+  color: #e5e7eb;
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px 24px 80px 24px;
+  box-sizing: border-box;
+}
+
+.vira-skeleton-container {
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Status / Initializing pill indicator */
+.vira-skeleton-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vira-skeleton-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: 500;
+  color: #a3a3a3;
+  letter-spacing: 0.2px;
+}
+
+.vira-skeleton-status-dot.pulsing {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 8px rgba(22, 163, 74, 0.6);
+  animation: vira-pulse-dot 1.5s infinite ease-in-out;
+}
+
+.vira-skeleton-status-dot.error {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+}
+
+.vira-skeleton-retry-btn {
+  background: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  color: #f87171;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vira-skeleton-retry-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+}
+
+/* Base Skeleton Shimmer Block */
+.vira-skeleton-block {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: vira-shimmer 1.8s infinite ease-in-out;
+}
+
+@keyframes vira-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes vira-pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+/* Navbar Skeleton */
+.vira-skeleton-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 36px;
+}
+
+.vira-skeleton-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.vira-skeleton-brand-logo {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.vira-skeleton-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.vira-skeleton-nav-links .nav-link-item {
+  width: 52px;
+  height: 14px;
+}
+
+.vira-skeleton-nav-links .nav-link-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.vira-skeleton-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vira-skeleton-nav-right .toggle-pill {
+  width: 86px;
+  height: 28px;
+  border-radius: 9999px;
+}
+
+.vira-skeleton-nav-right .user-pill {
+  width: 80px;
+  height: 24px;
+  border-radius: 9999px;
+}
+
+.vira-skeleton-nav-right .icon-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.vira-skeleton-nav-right .text-btn {
+  width: 44px;
+  height: 14px;
+}
+
+/* Divider */
+.vira-skeleton-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 32px 0;
+}
+
+/* Editorial Header Skeleton */
+.vira-skeleton-editorial-header {
+  padding: 8px 0 28px 0;
+}
+
+.vira-skeleton-editorial-header .title-line {
+  height: 32px;
+  width: 68%;
+  max-width: 440px;
+  margin-bottom: 14px;
+}
+
+.vira-skeleton-editorial-header .subtitle-line {
+  height: 15px;
+  width: 90%;
+  max-width: 540px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-editorial-header .subtitle-line.short {
+  width: 58%;
+  margin-bottom: 24px;
+}
+
+.vira-skeleton-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vira-skeleton-actions-row .btn-pill.primary {
+  width: 140px;
+  height: 38px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.vira-skeleton-actions-row .btn-pill.outline {
+  width: 96px;
+  height: 38px;
+  border-radius: 4px;
+}
+
+/* Section Common */
+.vira-skeleton-section .section-label {
+  width: 60px;
+  height: 14px;
+  margin-bottom: 16px;
+}
+
+/* Voice ID Skeleton */
+.vira-skeleton-voice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.vira-skeleton-voice-row .voice-info-col .status-tag {
+  width: 54px;
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-voice-row .voice-info-col .voice-title {
+  width: 140px;
+  height: 18px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-voice-row .voice-info-col .voice-desc {
+  width: 280px;
+  height: 14px;
+}
+
+.vira-skeleton-voice-row .btn-pill.outline {
+  width: 120px;
+  height: 36px;
+  border-radius: 4px;
+}
+
+/* People Directory Skeleton */
+.vira-skeleton-people-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.vira-skeleton-people-header .search-input {
+  width: 180px;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.vira-skeleton-people-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.vira-skeleton-person-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vira-skeleton-person-row .person-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vira-skeleton-person-row .person-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.vira-skeleton-person-row .person-name {
+  width: 90px;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-person-row .person-handle {
+  width: 60px;
+  height: 12px;
+}
+
+.vira-skeleton-person-row .person-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vira-skeleton-person-row .person-status {
+  width: 44px;
+  height: 12px;
+}
+
+.vira-skeleton-person-row .call-button {
+  width: 54px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+/* System Status Table Skeleton */
+.vira-skeleton-system-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.vira-skeleton-system-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vira-skeleton-system-row .system-label {
+  width: 130px;
+  height: 14px;
+}
+
+.vira-skeleton-system-row .system-val {
+  width: 45px;
+  height: 14px;
+}
+
+/* Easy Mode Skeleton Content */
+.vira-skeleton-easy-content {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.vira-skeleton-easy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.vira-skeleton-easy-header .easy-title {
+  width: 240px;
+  height: 28px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-header .easy-subtitle {
+  width: 320px;
+  height: 16px;
+}
+
+.vira-skeleton-easy-header .easy-listen-btn {
+  width: 110px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.vira-skeleton-easy-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.vira-skeleton-easy-rule-card {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vira-skeleton-easy-rule-card .icon-block {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.vira-skeleton-easy-rule-card .card-title {
+  width: 150px;
+  height: 16px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-rule-card .card-desc {
+  width: 100%;
+  height: 13px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-easy-rule-card .card-desc.short {
+  width: 70%;
+}
+
+.vira-skeleton-easy-contacts {
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vira-skeleton-easy-contacts .section-heading {
+  width: 140px;
+  height: 20px;
+  margin-bottom: 6px;
+}
+
+.vira-skeleton-easy-contacts .section-subheading {
+  width: 220px;
+  height: 14px;
+  margin-bottom: 20px;
+}
+
+.vira-skeleton-easy-contact-list {
+  display: grid;
+  gap: 12px;
+}
+
+.vira-skeleton-easy-contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vira-skeleton-easy-contact-row .contact-name {
+  width: 100px;
+  height: 17px;
+  margin-bottom: 4px;
+}
+
+.vira-skeleton-easy-contact-row .contact-status {
+  width: 50px;
+  height: 13px;
+}
+
+.vira-skeleton-easy-contact-row .contact-call-btn {
+  width: 120px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .vira-skeleton-block {
+    animation: none !important;
+    background-image: none !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
+  .vira-skeleton-status-dot.pulsing {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ==========================================================================
+   Recordings Panel & Saved Call History Styles
+   ========================================================================== */
+
+.recordings-panel-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.recordings-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border, #e5e5e5);
+}
+
+.recordings-panel-subtitle {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: var(--text-secondary, #525252);
+}
+
+.recordings-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recording-card-minimal {
+  padding: 16px 20px;
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-surface, #ffffff);
+  transition: border-color 0.15s ease;
+}
+
+.recording-card-minimal:hover {
+  border-color: var(--border-hover, #000000);
+}
+
+.recording-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.recording-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #000000);
+  margin-bottom: 2px;
+}
+
+.recording-card-date {
+  font-size: 13px;
+  color: var(--text-secondary, #525252);
+}
+
+.recording-scam-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.recording-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary, #525252);
+  margin-bottom: 16px;
+}
+
+.recording-meta-item strong {
+  color: var(--text-primary, #000000);
+}
+
+.recording-meta-dot {
+  opacity: 0.5;
+}
+
+.recording-meta-filename {
+  font-family: monospace;
+  font-size: 11.5px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-recording-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid var(--border, #e5e5e5);
+  background: transparent;
+  color: var(--text-primary, #000000);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-recording-action:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  border-color: var(--border-hover, #000000);
+}
+
+.btn-recording-action.active-playing {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.btn-recording-action.btn-delete {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.btn-recording-action.btn-delete:hover {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: #dc2626;
+}
+
+.btn-recording-action.btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.btn-recording-action.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.recording-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(220, 38, 38, 0.05);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 6px;
+  padding: 10px 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 

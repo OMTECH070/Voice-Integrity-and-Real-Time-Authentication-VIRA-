@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActiveCallInfo, CallState } from "../types/call";
 import { formatDuration, useCallTimer } from "../hooks/useCallTimer";
 import { useCallVAD } from "../hooks/useCallVAD";
@@ -7,6 +7,8 @@ import { VoiceIntegrityBadge } from "./VoiceIntegrityBadge";
 import { SecurityIndicator, SecurityState } from "./SecurityIndicator";
 import { useEasyMode } from "../context/EasyModeContext";
 import { EasyModeCallScreen } from "./EasyModeCallScreen";
+import { useCallRecording } from "../hooks/useCallRecording";
+import { WhyFlaggedModal } from "./WhyFlaggedModal";
 import type { SpeechSegment } from "../audio/vad/types";
 
 interface ActiveCallScreenProps {
@@ -32,8 +34,6 @@ const STATE_LABELS: Record<CallState, string> = {
   ENDED: "Call ended",
 };
 
-
-
 export function ActiveCallScreen({
   activeCall,
   callState,
@@ -47,6 +47,14 @@ export function ActiveCallScreen({
 }: ActiveCallScreenProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const duration = useCallTimer(callState === "CONNECTED");
+  const [showWhyFlagged, setShowWhyFlagged] = useState(false);
+
+  // On-device call recording and safety actions
+  const recording = useCallRecording({
+    callId: activeCall.callId,
+    localStream,
+    remoteStream,
+  });
 
   // Real-time rolling buffer & streaming transport for speech analysis
   const analysis = useVoiceAnalysis({
@@ -128,6 +136,32 @@ export function ActiveCallScreen({
           callRiskLevel={analysis.callRiskLevel}
           conversationalSignals={analysis.conversationalSignals}
           voiceIntegrityScore={analysis.voiceIntegrityScore}
+          isRecording={recording.isRecording}
+          recordingUrl={recording.recordingUrl}
+          isPlaying={recording.isPlaying}
+          statusMessage={recording.statusMessage}
+          isReported={recording.isReported}
+          onStartRecording={recording.startRecording}
+          onStopRecording={recording.stopRecording}
+          onTogglePlayPause={recording.togglePlayPause}
+          onDownloadRecording={recording.downloadRecording}
+          onReportScamCall={recording.reportScamCall}
+          onOpenWhyFlagged={() => setShowWhyFlagged(true)}
+          isRecordingSupported={recording.isSupported}
+        />
+        <WhyFlaggedModal
+          isOpen={showWhyFlagged}
+          onClose={() => setShowWhyFlagged(false)}
+          callRiskScore={analysis.callRiskScore}
+          callRiskLevel={analysis.callRiskLevel}
+          integrityStatus={analysis.integrityStatus}
+          voiceIntegrityScore={analysis.voiceIntegrityScore}
+          speakerMatchLabel={analysis.speakerMatchLabel}
+          speakerSimilarity={analysis.speakerSimilarity}
+          spoofScore={analysis.spoofScore}
+          rawLabel={analysis.rawLabel}
+          conversationalSignals={analysis.conversationalSignals}
+          reason={analysis.reason}
         />
       </div>
     );
@@ -239,6 +273,94 @@ export function ActiveCallScreen({
           </button>
         )}
       </div>
+
+      {/* Call Recording & Safety Actions Toolbar */}
+      <div className="call-safety-actions-toolbar" role="toolbar" aria-label="Call safety actions">
+        {/* 1. Record / Stop button */}
+        <button
+          type="button"
+          className={`btn-call-safety btn-call-record ${recording.isRecording ? "is-recording" : ""}`}
+          onClick={recording.isRecording ? recording.stopRecording : recording.startRecording}
+          disabled={!recording.isSupported || (callState !== "CONNECTED" && !recording.isRecording)}
+          aria-label={recording.isRecording ? "Stop recording call" : "Record call"}
+        >
+          {recording.isRecording ? "⏹ Stop Recording" : "⏺ Record"}
+        </button>
+
+        {/* 2. Playback button */}
+        <button
+          type="button"
+          className="btn-call-safety"
+          onClick={recording.togglePlayPause}
+          disabled={!recording.recordingUrl}
+          aria-label={recording.isPlaying ? "Pause playback" : "Play recording"}
+        >
+          {recording.isPlaying ? "⏸ Pause" : "▶ Play"}
+        </button>
+
+        {/* 3. Download button */}
+        <button
+          type="button"
+          className="btn-call-safety"
+          onClick={recording.downloadRecording}
+          disabled={!recording.recordingUrl}
+          aria-label="Download recording"
+        >
+          ⤓ Download
+        </button>
+
+        {/* 4. Report Scam Call button */}
+        <button
+          type="button"
+          className={`btn-call-safety btn-call-report ${recording.isReported ? "is-reported" : ""}`}
+          onClick={recording.reportScamCall}
+          aria-label="Report scam call"
+        >
+          {recording.isReported ? "✓ Reported" : "🚨 Report Scam Call"}
+        </button>
+
+        {/* 5. Explain Why VIRA Flagged It button */}
+        <button
+          type="button"
+          className="btn-call-safety"
+          onClick={() => setShowWhyFlagged(true)}
+          aria-label="Explain why VIRA flagged it"
+        >
+          ℹ️ Why VIRA Flagged It
+        </button>
+
+        {/* Status messages */}
+        {recording.isRecording && (
+          <div className="call-recording-status-msg recording" role="status">
+            Recording...
+          </div>
+        )}
+        {!recording.isRecording && recording.statusMessage && (
+          <div className="call-recording-status-msg saved" role="status">
+            {recording.statusMessage}
+          </div>
+        )}
+        {recording.isReported && (
+          <div className="call-recording-status-msg reported" role="status">
+            Call reported as suspicious.
+          </div>
+        )}
+      </div>
+
+      <WhyFlaggedModal
+        isOpen={showWhyFlagged}
+        onClose={() => setShowWhyFlagged(false)}
+        callRiskScore={analysis.callRiskScore}
+        callRiskLevel={analysis.callRiskLevel}
+        integrityStatus={analysis.integrityStatus}
+        voiceIntegrityScore={analysis.voiceIntegrityScore}
+        speakerMatchLabel={analysis.speakerMatchLabel}
+        speakerSimilarity={analysis.speakerSimilarity}
+        spoofScore={analysis.spoofScore}
+        rawLabel={analysis.rawLabel}
+        conversationalSignals={analysis.conversationalSignals}
+        reason={analysis.reason}
+      />
     </div>
   );
 }
