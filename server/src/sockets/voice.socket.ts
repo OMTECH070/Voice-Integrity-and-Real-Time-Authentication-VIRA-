@@ -15,6 +15,7 @@ import { transcriptionService } from "../services/transcription.service";
 import { callRiskService } from "../services/callRisk.service";
 import { xgboostIntegrityService } from "../services/xgboostIntegrity.service";
 import { datasetService } from "../services/dataset.service";
+import { remoteMlService } from "../services/remoteMl.service";
 import { logger } from "../utils/logger";
 
 type TypedServer = Server<
@@ -317,7 +318,7 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
   });
 
   // Real-time voice analysis chunk
-  socket.on("voice:analysis-chunk", (payload: VoiceAnalysisChunkPayload) => {
+  socket.on("voice:analysis-chunk", async (payload: VoiceAnalysisChunkPayload) => {
     const startTime = Date.now();
     const userId = socket.data.userId;
 
@@ -404,6 +405,252 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
       // Determine the other participant's ID for speaker verification lookup
       const remoteUserId = session.callerId === userId ? session.calleeId : session.callerId;
       
+      const handleWindowResults = async ({
+        spoofScore,
+        label,
+        modelVersion,
+        processingLatencyMs,
+        status,
+        wav2vec2Score,
+        wav2vec2Status,
+        error,
+        precomputedEmbedding,
+      }: {
+        spoofScore: number;
+        label: "live" | "likely-synthetic" | "uncertain";
+        modelVersion: string;
+        processingLatencyMs: number;
+        status: "analyzed" | "error";
+        wav2vec2Score?: number | null;
+        wav2vec2Status?: string;
+        error?: string;
+        precomputedEmbedding?: Float32Array;
+      }) => {
+        // 1. ECAPA-TDNN Speaker Verification (Call-scoped reference profile loaded once per call)
+        const enrolledProfile = await getOrLoadEnrolledProfileForCall(
+          callId,
+          session.callerId,
+          session.calleeId,
+          remoteUserId
+        );
+
+        let speakerSimilarity: number | undefined;
+        let speakerMatch: boolean | undefined;
+        let speakerMatchLabel:
+          | "match"
+          | "likely-match"
+          | "mismatch"
+          | "uncertain"
+          | "not-enrolled"
+          | undefined = enrolledProfile ? "uncertain" : "not-enrolled";
+
+        if (enrolledProfile) {
+          try {
+            let currentEmbedding: Float32Array | null = precomputedEmbedding ?? null;
+            if (!currentEmbedding && voiceAuthService.isReady()) {
+              logger.info(`[VIRA][ECAPA] inference started | callId=${callId} | window=${sequenceNumber}`);
+              currentEmbedding = await voiceAuthService.extractEmbedding(samples, sampleRate);
+              logger.info(`[VIRA][ECAPA] embedding generated | dimensions=${currentEmbedding.length}`);
+            }
+
+            if (currentEmbedding) {
+              const speechDurationSec = durationMs / 1000.0;
+              const verification = voiceAuthService.verifySpeaker(
+                enrolledProfile,
+                currentEmbedding,
+                speechDurationSec
+              );
+              speakerSimilarity = verification.similarity;
+              speakerMatch = verification.match;
+              speakerMatchLabel = verification.label;
+              logger.info(
+                `[VIRA][ECAPA] similarity=${verification.similarity.toFixed(4)} | match=${verification.match} | label=${verification.label}`
+              );
+              logger.info(`[VIRA][ECAPA] verification result=${verification.decision}`);
+            }
+          } catch (err) {
+            logger.warn(`[VIRA][ECAPA] inference failed for call ${callId}: ${err}`);
+          }
+        }
+
+        // 2. Real-time Voice Integrity Fusion (AASIST + ECAPA + Temporal Smoothing)
+        const fusion = voiceIntegrityService.assessWindow(
+          callId,
+          spoofScore,
+          speakerSimilarity,
+          !!enrolledProfile,
+          timestampMs
+        );
+
+        // 3. Speech-to-Text Transcription (Deepgram / Whisper / Pluggable)
+        let transcriptSnippet: string | undefined;
+        let transcriptStatus: string = "PROCESSED";
+        try {
+          const transcriptRes = await transcriptionService.transcribeSpeechChunk(
+            callId,
+            samples,
+            sampleRate,
+            timestampMs,
+            timestampMs + durationMs,
+            speakerDirection,
+            remoteUserId
+          );
+          if (transcriptRes.success && transcriptRes.segment) {
+            transcriptSnippet = transcriptRes.segment.text;
+          }
+        } catch (err) {
+          transcriptStatus = "ERROR";
+          logger.warn(`Transcription error on call ${callId}: ${err}`);
+        }
+
+        // 4. Multi-Signal Call Risk Analysis (Social Engineering / Financial / Urgency)
+        const callTranscripts = transcriptionService.getCallTranscript(callId);
+        const riskAssessment = callRiskService.analyzeTranscript(callId, callTranscripts);
+        logger.info(
+          `[VIRA][RISK] Transcript analyzed | callId=${callId} | risk=${riskAssessment.riskLevel} | score=${riskAssessment.riskScore}`
+        );
+
+        // 5. XGBoost / Multi-Signal Calibrated Baseline Scoring
+        let sumSq = 0;
+        for (let i = 0; i < samples.length; i++) {
+          sumSq += samples[i] * samples[i];
+        }
+        const rms = Math.sqrt(sumSq / (samples.length || 1));
+        const speechDurationSec = durationMs / 1000.0;
+
+        const fusedIntegrityAndRisk = xgboostIntegrityService.evaluateIntegrityAndRisk({
+          ecapaSimilarity: speakerSimilarity !== undefined ? speakerSimilarity : null,
+          aasistSpoofScore: spoofScore,
+          wav2vec2SpoofScore: wav2vec2Score ?? null,
+          vadSpeechRatio: 0.95,
+          speechDurationSec,
+          transcriptRiskScore: riskAssessment.riskScore,
+          hasMoneyRequest:
+            riskAssessment.signalCounts.MONEY_REQUEST > 0 ||
+            riskAssessment.signalCounts.PAYMENT_REQUEST > 0,
+          hasUrgencySignal:
+            riskAssessment.signalCounts.URGENCY > 0 ||
+            riskAssessment.signalCounts.PRESSURE_TACTIC > 0,
+          hasCredentialRequest: riskAssessment.signalCounts.CREDENTIAL_REQUEST > 0,
+          isSpeakerMismatch: speakerMatch === false,
+          audioRmsEnergy: Math.min(1.0, rms * 4),
+          acousticConfidence: fusion.confidence,
+        });
+
+        // 6. Persist candidate dataset sample into ML Dataset Collection
+        logger.info(`[VIRA][DATASET] Sample ingestion attempted | callId=${callId}`);
+        try {
+          await datasetService.ingestSample({
+            callId,
+            speakerId: remoteUserId,
+            speakerDirection: "remote",
+            features: {
+              ecapaSimilarity: speakerSimilarity !== undefined ? speakerSimilarity : null,
+              aasistSpoofScore: spoofScore,
+              wav2vec2SpoofScore: wav2vec2Score ?? null,
+              vadSpeechRatio: 0.95,
+              speechDurationSec,
+              transcriptRiskScore: riskAssessment.riskScore,
+              hasMoneyRequest:
+                riskAssessment.signalCounts.MONEY_REQUEST > 0 ||
+                riskAssessment.signalCounts.PAYMENT_REQUEST > 0,
+              hasUrgencySignal:
+                riskAssessment.signalCounts.URGENCY > 0 ||
+                riskAssessment.signalCounts.PRESSURE_TACTIC > 0,
+              hasCredentialRequest: riskAssessment.signalCounts.CREDENTIAL_REQUEST > 0,
+              isSpeakerMismatch: speakerMatch === false,
+              audioRmsEnergy: Math.min(1.0, rms * 4),
+              acousticConfidence: fusion.confidence,
+            },
+            rawEcapaSimilarity: speakerSimilarity,
+            hasEnrolledProfile: !!enrolledProfile,
+            audioQualitySnr: 25.0,
+            modelConfidence: fusion.confidence,
+            modelVersions: {
+              aasist: modelVersion,
+              ecapa: "ECAPA-TDNN-v1",
+              silero: "Silero-VAD-v5",
+              wav2vec2: wav2vec2Status ?? "NOT_READY",
+              xgboost: fusedIntegrityAndRisk.modelSource,
+            },
+            metadata: {
+              timestampMs,
+              sequenceNumber,
+              transcriptText: transcriptSnippet ?? "",
+              primaryRiskAssessment: riskAssessment.primaryAssessment,
+            },
+          });
+        } catch (err) {
+          logger.warn(`Dataset sample ingestion failed for call ${callId}: ${err}`);
+        }
+
+        // 7. Emit complete real-time telemetry result to client
+        socket.emit("voice:analysis-result", {
+          callId,
+          speakerDirection,
+          sequenceNumber,
+          timestampMs,
+          durationMs,
+          processingLatencyMs,
+          status,
+          spoofScore,
+          label,
+          speakerSimilarity,
+          speakerMatch,
+          speakerMatchLabel,
+          integrityStatus: fusion.integrityStatus,
+          confidence: fusion.confidence,
+          reason: fusion.reason,
+          isSmoothed: fusion.isSmoothed,
+          calibrationVersion: fusion.calibrationVersion,
+          modelVersion,
+          wav2vec2Score,
+          wav2vec2Status,
+          transcriptSnippet,
+          transcriptStatus,
+          callRiskScore: riskAssessment.riskScore,
+          callRiskLevel:
+            riskAssessment.riskLevel === "HIGH RISK"
+              ? "HIGH"
+              : riskAssessment.riskLevel === "MEDIUM RISK"
+              ? "MEDIUM"
+              : "LOW",
+          detectedRiskSignals: riskAssessment.detectedSignals,
+          voiceIntegrityScore: fusedIntegrityAndRisk.voiceIntegrityScore,
+          voiceIntegrityLevel: fusedIntegrityAndRisk.voiceIntegrityLevel,
+          contributingFactors: fusedIntegrityAndRisk.contributingFactors,
+          error,
+        });
+      };
+
+      // Try Railway first if configured
+      if (remoteMlService.isConfigured()) {
+        const remoteResult = await remoteMlService.analyzeChunk(samples, sampleRate, {
+          callId,
+          sequence: sequenceNumber,
+        });
+
+        if (remoteResult) {
+          const spoofScore = remoteResult.spoofScore;
+          const label: "live" | "likely-synthetic" | "uncertain" =
+            spoofScore >= 0.70 ? "likely-synthetic" : spoofScore <= 0.55 ? "live" : "uncertain";
+
+          await handleWindowResults({
+            spoofScore,
+            label,
+            modelVersion: "Railway-AASIST-v1",
+            processingLatencyMs: remoteResult.inferenceLatencyMs,
+            status: "analyzed",
+            precomputedEmbedding: remoteResult.embedding,
+          });
+          return;
+        }
+
+        // Fall through to local fallback below
+        logger.info(`[VIRA][ML-CLIENT] Local ML fallback used | callId=${callId} | sequence=${sequenceNumber}`);
+      }
+
+      // Local fallback execution (queue backpressure + local ONNX AASIST & ECAPA)
       voiceLivenessService.enqueueAnalysis(
         {
           callId,
@@ -415,172 +662,14 @@ export function registerVoiceHandlers(_io: TypedServer, socket: TypedSocket): vo
           sampleRate,
         },
         async (result) => {
-          // 1. ECAPA-TDNN Speaker Verification (Call-scoped reference profile loaded once per call)
-          const enrolledProfile = await getOrLoadEnrolledProfileForCall(
-            callId,
-            session.callerId,
-            session.calleeId,
-            remoteUserId
-          );
-
-          let speakerSimilarity: number | undefined;
-          let speakerMatch: boolean | undefined;
-          let speakerMatchLabel: "match" | "likely-match" | "mismatch" | "uncertain" | "not-enrolled" | undefined = enrolledProfile
-            ? "uncertain"
-            : "not-enrolled";
-
-          if (enrolledProfile && voiceAuthService.isReady()) {
-            try {
-              logger.info(`[VIRA][ECAPA] inference started | callId=${callId} | window=${sequenceNumber}`);
-              const currentEmbedding = await voiceAuthService.extractEmbedding(samples, sampleRate);
-              logger.info(`[VIRA][ECAPA] embedding generated | dimensions=${currentEmbedding.length}`);
-              const speechDurationSec = durationMs / 1000.0;
-              const verification = voiceAuthService.verifySpeaker(enrolledProfile, currentEmbedding, speechDurationSec);
-              speakerSimilarity = verification.similarity;
-              speakerMatch = verification.match;
-              speakerMatchLabel = verification.label;
-              logger.info(
-                `[VIRA][ECAPA] similarity=${verification.similarity.toFixed(4)} | match=${verification.match} | label=${verification.label}`
-              );
-              logger.info(`[VIRA][ECAPA] verification result=${verification.decision}`);
-            } catch (err) {
-              logger.warn(`[VIRA][ECAPA] inference failed for call ${callId}: ${err}`);
-            }
-          }
-
-          // 2. Real-time Voice Integrity Fusion (AASIST + ECAPA + Temporal Smoothing)
-          const fusion = voiceIntegrityService.assessWindow(
-            callId,
-            result.spoofScore,
-            speakerSimilarity,
-            !!enrolledProfile,
-            timestampMs
-          );
-
-          // 3. Speech-to-Text Transcription (Deepgram / Whisper / Pluggable)
-          let transcriptSnippet: string | undefined;
-          let transcriptStatus: string = "PROCESSED";
-          try {
-            const transcriptRes = await transcriptionService.transcribeSpeechChunk(
-              callId,
-              samples,
-              sampleRate,
-              timestampMs,
-              timestampMs + durationMs,
-              speakerDirection,
-              remoteUserId
-            );
-            if (transcriptRes.success && transcriptRes.segment) {
-              transcriptSnippet = transcriptRes.segment.text;
-            }
-          } catch (err) {
-            transcriptStatus = "ERROR";
-            logger.warn(`Transcription error on call ${callId}: ${err}`);
-          }
-
-          // 4. Multi-Signal Call Risk Analysis (Social Engineering / Financial / Urgency)
-          const callTranscripts = transcriptionService.getCallTranscript(callId);
-          const riskAssessment = callRiskService.analyzeTranscript(callId, callTranscripts);
-          logger.info(
-            `[VIRA][RISK] Transcript analyzed | callId=${callId} | risk=${riskAssessment.riskLevel} | score=${riskAssessment.riskScore}`
-          );
-
-          // 5. XGBoost / Multi-Signal Calibrated Baseline Scoring
-          let sumSq = 0;
-          for (let i = 0; i < samples.length; i++) {
-            sumSq += samples[i] * samples[i];
-          }
-          const rms = Math.sqrt(sumSq / (samples.length || 1));
-          const speechDurationSec = durationMs / 1000.0;
-
-          const fusedIntegrityAndRisk = xgboostIntegrityService.evaluateIntegrityAndRisk({
-            ecapaSimilarity: speakerSimilarity !== undefined ? speakerSimilarity : null,
-            aasistSpoofScore: result.spoofScore,
-            wav2vec2SpoofScore: result.wav2vec2Score ?? null,
-            vadSpeechRatio: 0.95,
-            speechDurationSec,
-            transcriptRiskScore: riskAssessment.riskScore,
-            hasMoneyRequest: riskAssessment.signalCounts.MONEY_REQUEST > 0 || riskAssessment.signalCounts.PAYMENT_REQUEST > 0,
-            hasUrgencySignal: riskAssessment.signalCounts.URGENCY > 0 || riskAssessment.signalCounts.PRESSURE_TACTIC > 0,
-            hasCredentialRequest: riskAssessment.signalCounts.CREDENTIAL_REQUEST > 0,
-            isSpeakerMismatch: speakerMatch === false,
-            audioRmsEnergy: Math.min(1.0, rms * 4),
-            acousticConfidence: fusion.confidence,
-          });
-
-          // 6. Persist candidate dataset sample into ML Dataset Collection
-          logger.info(`[VIRA][DATASET] Sample ingestion attempted | callId=${callId}`);
-          try {
-            await datasetService.ingestSample({
-              callId,
-              speakerId: remoteUserId,
-              speakerDirection: "remote",
-              features: {
-                ecapaSimilarity: speakerSimilarity !== undefined ? speakerSimilarity : null,
-                aasistSpoofScore: result.spoofScore,
-                wav2vec2SpoofScore: result.wav2vec2Score ?? null,
-                vadSpeechRatio: 0.95,
-                speechDurationSec,
-                transcriptRiskScore: riskAssessment.riskScore,
-                hasMoneyRequest: riskAssessment.signalCounts.MONEY_REQUEST > 0 || riskAssessment.signalCounts.PAYMENT_REQUEST > 0,
-                hasUrgencySignal: riskAssessment.signalCounts.URGENCY > 0 || riskAssessment.signalCounts.PRESSURE_TACTIC > 0,
-                hasCredentialRequest: riskAssessment.signalCounts.CREDENTIAL_REQUEST > 0,
-                isSpeakerMismatch: speakerMatch === false,
-                audioRmsEnergy: Math.min(1.0, rms * 4),
-                acousticConfidence: fusion.confidence,
-              },
-              rawEcapaSimilarity: speakerSimilarity,
-              hasEnrolledProfile: !!enrolledProfile,
-              audioQualitySnr: 25.0,
-              modelConfidence: fusion.confidence,
-              modelVersions: {
-                aasist: result.modelVersion,
-                ecapa: "ECAPA-TDNN-v1",
-                silero: "Silero-VAD-v5",
-                wav2vec2: result.wav2vec2Status ?? "NOT_READY",
-                xgboost: fusedIntegrityAndRisk.modelSource,
-              },
-              metadata: {
-                timestampMs,
-                sequenceNumber: result.sequenceNumber,
-                transcriptText: transcriptSnippet ?? "",
-                primaryRiskAssessment: riskAssessment.primaryAssessment,
-              },
-            });
-          } catch (err) {
-            logger.warn(`Dataset sample ingestion failed for call ${callId}: ${err}`);
-          }
-
-          // 7. Emit complete real-time telemetry result to client
-          socket.emit("voice:analysis-result", {
-            callId: result.callId,
-            speakerDirection: result.speakerDirection,
-            sequenceNumber: result.sequenceNumber,
-            timestampMs: result.timestampMs,
-            durationMs: result.durationMs,
-            processingLatencyMs: result.processingLatencyMs,
-            status: result.status,
+          await handleWindowResults({
             spoofScore: result.spoofScore,
             label: result.label,
-            speakerSimilarity,
-            speakerMatch,
-            speakerMatchLabel,
-            integrityStatus: fusion.integrityStatus,
-            confidence: fusion.confidence,
-            reason: fusion.reason,
-            isSmoothed: fusion.isSmoothed,
-            calibrationVersion: fusion.calibrationVersion,
             modelVersion: result.modelVersion,
+            processingLatencyMs: result.processingLatencyMs,
+            status: result.status,
             wav2vec2Score: result.wav2vec2Score,
             wav2vec2Status: result.wav2vec2Status,
-            transcriptSnippet,
-            transcriptStatus,
-            callRiskScore: riskAssessment.riskScore,
-            callRiskLevel: riskAssessment.riskLevel === "HIGH RISK" ? "HIGH" : riskAssessment.riskLevel === "MEDIUM RISK" ? "MEDIUM" : "LOW",
-            detectedRiskSignals: riskAssessment.detectedSignals,
-            voiceIntegrityScore: fusedIntegrityAndRisk.voiceIntegrityScore,
-            voiceIntegrityLevel: fusedIntegrityAndRisk.voiceIntegrityLevel,
-            contributingFactors: fusedIntegrityAndRisk.contributingFactors,
             error: result.error,
           });
         }
